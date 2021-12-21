@@ -15,3 +15,9 @@ Polygon
    3) MASRoyalty(royalty)
     - setRoyalty, removeRoyalty 함수로 최초 생성자가 로얄티 설정 가능.
     - 컨트랙트 오너가 로얄티를 조정할수 있음 changeRoyaltySettings
+
+Klaytn
+1. 컨트랙 deploy 순서
+   1) factory.sol(MAS)
+2. factory.sol(MAS)
+   - addMinter(address)에 유저 어드레스 등록후, 민트 가능하게함.
