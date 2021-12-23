@@ -60,9 +60,9 @@ contract MAS_Sales is Ownable,ReentrancyGuard,Pausable{
     }
     function purchased(uint256 _tokenId) public payable nonReentrant whenNotPaused {
         require(SalesPrice[_tokenId]>0,"the price should be more than 0");
-        uint256 royalty = _royaltyCalculation(_tokenId,SalesPrice[_tokenId]);
-        uint256 totalPrice=SalesPrice[_tokenId].add(royalty);
-        require(msg.value>=totalPrice,"the value should be more or equal than salesPrice");
+        //uint256 royalty = _royaltyCalculation(_tokenId,SalesPrice[_tokenId]);
+        //uint256 totalPrice=SalesPrice[_tokenId];
+        require(msg.value>=SalesPrice[_tokenId],"the value should be more or equal than salesPrice");
         require(nftAddress.ownerOf(_tokenId) == RegisteredSeller[_tokenId],"token owner does not have token");
         require(msg.sender != nftAddress.ownerOf(_tokenId) && msg.sender != address(0),"owner cannot purchase the own token");
         address payable _owner = address(uint160(owner()));
