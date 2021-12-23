@@ -68,9 +68,9 @@ contract royalty is Ownable, ERC2981PerTokenRoyalties {
         emit royalty_record(_msgSender(), _tokenId, _royalties);
     }
 
-    function removeRoyalty(uint256 _tokenId) public creatorOnly(_tokenId) {
-        _setTokenRoyalty(_tokenId, _msgSender(), 0);
-        royaltyInfo[_tokenId] = Royalty_data(_royalties, false);
-        emit royalty_record(_msgSender(), _tokenId, _royalties);
+    function removeRoyalty(uint256 _tokenId) public creatorOnly(_tokenId){
+        _setTokenRoyalty(_tokenId,_msgSender(),0);
+        royaltyInfo[_tokenId]=Royalty_data(0,false);
+        emit royalty_record(_msgSender(),_tokenId,0);
     }
 }
