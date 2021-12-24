@@ -1,1658 +1,391 @@
-pragma solidity ^0.5.0;
-/*
- * @dev Provides information about the current execution context, including the
- * sender of the transaction and its data. While these are generally available
- * via msg.sender and msg.data, they should not be accessed in such a direct
- * manner, since when dealing with GSN meta-transactions the account sending and
- * paying for execution may not be the actual sender (as far as an application
- * is concerned).
- *
- * This contract is only required for intermediate, library-like contracts.
- */
-contract Context {
-    // Empty internal constructor, to prevent people from mistakenly deploying
-    // an instance of this contract, which should be used via inheritance.
-    constructor() internal {}
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity >=0.7.0 <0.9.0;
+import "./ERC1155_modifier.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "./MAS_WhiteLists.sol";
 
-    // solhint-disable-previous-line no-empty-blocks
-
-    function _msgSender() internal view returns (address payable) {
-        return msg.sender;
-    }
-
-    function _msgData() internal view returns (bytes memory) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
-        return msg.data;
-    }
-}
-
-/**
- * @dev Contract module which provides a basic access control mechanism, where
- * there is an account (an owner) that can be granted exclusive access to
- * specific functions.
- *
- * This module is used through inheritance. It will make available the modifier
- * `onlyOwner`, which can be applied to your functions to restrict their use to
- * the owner.
- */
-contract Ownable is Context {
-    address private _owner;
-
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
-
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    constructor() internal {
-        address msgSender = _msgSender();
-        _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
-    }
-
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    function owner() public view returns (address) {
-        return _owner;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(isOwner(), "Ownable: caller is not the owner");
-        _;
-    }
-
-    /**
-     * @dev Returns true if the caller is the current owner.
-     */
-    function isOwner() public view returns (bool) {
-        return _msgSender() == _owner;
-    }
-
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public onlyOwner {
-        emit OwnershipTransferred(_owner, address(0));
-        _owner = address(0);
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public onlyOwner {
-        _transferOwnership(newOwner);
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     */
-    function _transferOwnership(address newOwner) internal {
-        require(
-            newOwner != address(0),
-            "Ownable: new owner is the zero address"
-        );
-        emit OwnershipTransferred(_owner, newOwner);
-        _owner = newOwner;
-    }
-}
-
-/**
- *
- * @dev Wrappers over Solidity's arithmetic operations with added overflow
- * checks.
- *
- * Arithmetic operations in Solidity wrap on overflow. This can easily result
- * in bugs, because programmers usually assume that an overflow raises an
- * error, which is the standard behavior in high level programming languages.
- * `SafeMath` restores this intuition by reverting the transaction when an
- * operation overflows.
- *
- * Using this library instead of the unchecked operations eliminates an entire
- * class of bugs, so it's recommended to use it always.
- *
- */
-library SafeMath {
-    /**
-     * @dev Returns the addition of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `+` operator.
-     *
-     * Requirements:
-     * - Addition cannot overflow.
-     */
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, "SafeMath: addition overflow");
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b <= a, "SafeMath: subtraction overflow");
-        uint256 c = a - b;
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the multiplication of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `*` operator.
-     *
-     * Requirements:
-     * - Multiplication cannot overflow.
-     */
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-        // benefit is lost if 'b' is also tested.
-        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
-        if (a == 0) {
-            return 0;
-        }
-
-        uint256 c = a * b;
-        require(c / a == b, "SafeMath: multiplication overflow");
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     * - The divisor cannot be zero.
-     */
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Solidity only automatically asserts when dividing by 0
-        require(b > 0, "SafeMath: division by zero");
-        uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, "SafeMath: modulo by zero");
-        return a % b;
-    }
-}
-
-/**
- * @dev Interface of the KIP-13 standard, as defined in the
- * [KIP-13](http://kips.klaytn.com/KIPs/kip-13-interface_query_standard).
- *
- * Implementers can declare support of contract interfaces, which can then be
- * queried by others.
- *
- * For an implementation, see `KIP13`.
- */
-interface IKIP13 {
-    /**
-     * @dev Returns true if this contract implements the interface defined by
-     * `interfaceId`. See the corresponding
-     * [KIP-13 section](http://kips.klaytn.com/KIPs/kip-13-interface_query_standard#how-interface-identifiers-are-defined)
-     * to learn more about how these ids are created.
-     *
-     * This function call must use less than 30 000 gas.
-     */
-    function supportsInterface(bytes4 interfaceId) external view returns (bool);
-}
-
-/**
- * @title Roles
- * @dev Library for managing addresses assigned to a Role.
- */
-library Roles {
-    struct Role {
-        mapping(address => bool) bearer;
-    }
-
-    /**
-     * @dev Give an account access to this role.
-     */
-    function add(Role storage role, address account) internal {
-        require(!has(role, account), "Roles: account already has role");
-        role.bearer[account] = true;
-    }
-
-    /**
-     * @dev Remove an account's access to this role.
-     */
-    function remove(Role storage role, address account) internal {
-        require(has(role, account), "Roles: account does not have role");
-        role.bearer[account] = false;
-    }
-
-    /**
-     * @dev Check if an account has this role.
-     * @return bool
-     */
-    function has(Role storage role, address account)
+abstract contract ContextMixin {
+    function msgSender()
         internal
         view
-        returns (bool)
+        returns (address payable sender)
     {
-        require(account != address(0), "Roles: account is the zero address");
-        return role.bearer[account];
+        if (msg.sender == address(this)) {
+            bytes memory array = msg.data;
+            uint256 index = msg.data.length;
+            assembly {
+                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
+                sender := and(
+                    mload(add(array, index)),
+                    0xffffffffffffffffffffffffffffffffffffffff
+                )
+            }
+        } else {
+            sender = payable(msg.sender);
+        }
+        return sender;
     }
 }
+contract Initializable {
+    bool inited = false;
 
-contract PauserRole {
-    using Roles for Roles.Role;
-
-    event PauserAdded(address indexed account);
-    event PauserRemoved(address indexed account);
-
-    Roles.Role private _pausers;
-
-    constructor() internal {
-        _addPauser(msg.sender);
-    }
-
-    modifier onlyPauser() {
-        require(
-            isPauser(msg.sender),
-            "PauserRole: caller does not have the Pauser role"
-        );
+    modifier initializer() {
+        require(!inited, "already inited");
         _;
-    }
-
-    function isPauser(address account) public view returns (bool) {
-        return _pausers.has(account);
-    }
-
-    function addPauser(address account) public onlyPauser {
-        _addPauser(account);
-    }
-
-    function renouncePauser() public {
-        _removePauser(msg.sender);
-    }
-
-    function _addPauser(address account) internal {
-        _pausers.add(account);
-        emit PauserAdded(account);
-    }
-
-    function _removePauser(address account) internal {
-        _pausers.remove(account);
-        emit PauserRemoved(account);
+        inited = true;
     }
 }
-
 /**
- * @dev Implementation of the `IKIP13` interface.
- *
- * Contracts may inherit from this and call `_registerInterface` to declare
- * their support of an interface.
+ * https://github.com/maticnetwork/pos-portal/blob/master/contracts/common/EIP712Base.sol
  */
-contract KIP13 is IKIP13 {
-    /*
-     * bytes4(keccak256('supportsInterface(bytes4)')) == 0x01ffc9a7
-     */
-    bytes4 private constant _INTERFACE_ID_KIP13 = 0x01ffc9a7;
-
-    /**
-     * @dev Mapping of interface ids to whether or not it's supported.
-     */
-    mapping(bytes4 => bool) private _supportedInterfaces;
-
-    constructor() internal {
-        // Derived contracts need only register support for their own interfaces,
-        // we register support for KIP13 itself here
-        _registerInterface(_INTERFACE_ID_KIP13);
+contract EIP712Base is Initializable {
+    struct EIP712Domain {
+        string name;
+        string version;
+        address verifyingContract;
+        bytes32 salt;
     }
 
-    /**
-     * @dev See `IKIP13.supportsInterface`.
-     *
-     * Time complexity O(1), guaranteed to always use less than 30 000 gas.
-     */
-    function supportsInterface(bytes4 interfaceId)
-        external
-        view
-        returns (bool)
+    string constant public ERC712_VERSION = "1";
+
+    bytes32 internal constant EIP712_DOMAIN_TYPEHASH = keccak256(
+        bytes(
+            "EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"
+        )
+    );
+    bytes32 internal domainSeperator;
+
+    // supposed to be called once while initializing.
+    // one of the contractsa that inherits this contract follows proxy pattern
+    // so it is not possible to do this in a constructor
+    function _initializeEIP712(
+        string memory name
+    )
+        internal
+        initializer
     {
-        return _supportedInterfaces[interfaceId];
+        _setDomainSeperator(name);
     }
 
-    /**
-     * @dev Registers the contract as an implementer of the interface defined by
-     * `interfaceId`. Support of the actual KIP13 interface is automatic and
-     * registering its interface id is not required.
-     *
-     * See `IKIP13.supportsInterface`.
-     *
-     * Requirements:
-     *
-     * - `interfaceId` cannot be the KIP13 invalid interface (`0xffffffff`).
-     */
-    function _registerInterface(bytes4 interfaceId) internal {
-        require(interfaceId != 0xffffffff, "KIP13: invalid interface id");
-        _supportedInterfaces[interfaceId] = true;
+    function _setDomainSeperator(string memory name) internal {
+        domainSeperator = keccak256(
+            abi.encode(
+                EIP712_DOMAIN_TYPEHASH,
+                keccak256(bytes(name)),
+                keccak256(bytes(ERC712_VERSION)),
+                address(this),
+                bytes32(getChainId())
+            )
+        );
     }
-}
 
-/**
- * @dev Required interface of an KIP17 compliant contract.
- */
-contract IKIP17 is IKIP13 {
-    event Transfer(
-        address indexed from,
-        address indexed to,
-        uint256 indexed tokenId
-    );
-    event Approval(
-        address indexed owner,
-        address indexed approved,
-        uint256 indexed tokenId
-    );
-    event ApprovalForAll(
-        address indexed owner,
-        address indexed operator,
-        bool approved
-    );
+    function getDomainSeperator() public view returns (bytes32) {
+        return domainSeperator;
+    }
 
-    /**
-     * @dev Returns the number of NFTs in `owner`'s account.
-     */
-    function balanceOf(address owner) public view returns (uint256 balance);
-
-    /**
-     * @dev Returns the owner of the NFT specified by `tokenId`.
-     */
-    function ownerOf(uint256 tokenId) public view returns (address owner);
-
-    /**
-     * @dev Transfers a specific NFT (`tokenId`) from one account (`from`) to
-     * another (`to`).
-     *
-     * Requirements:
-     * - `from`, `to` cannot be zero.
-     * - `tokenId` must be owned by `from`.
-     * - If the caller is not `from`, it must be have been allowed to move this
-     * NFT by either `approve` or `setApproveForAll`.
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public;
-
-    /**
-     * @dev Transfers a specific NFT (`tokenId`) from one account (`from`) to
-     * another (`to`).
-     *
-     * Requirements:
-     * - If the caller is not `from`, it must be approved to move this NFT by
-     * either `approve` or `setApproveForAll`.
-     */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public;
-
-    function approve(address to, uint256 tokenId) public;
-
-    function getApproved(uint256 tokenId)
-        public
-        view
-        returns (address operator);
-
-    function setApprovalForAll(address operator, bool _approved) public;
-
-    function isApprovedForAll(address owner, address operator)
-        public
-        view
-        returns (bool);
-
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) public;
-}
-
-/**
- * @title ERC721 token receiver interface
- * @dev Interface for any contract that wants to support safeTransfers
- * from ERC721 asset contracts.
- */
-contract IERC721Receiver {
-    /**
-     * @notice Handle the receipt of an NFT
-     * @dev The ERC721 smart contract calls this function on the recipient
-     * after a `safeTransfer`. This function MUST return the function selector,
-     * otherwise the caller will revert the transaction. The selector to be
-     * returned can be obtained as `this.onERC721Received.selector`. This
-     * function MAY throw to revert and reject the transfer.
-     * Note: the ERC721 contract address is always the message sender.
-     * @param operator The address which called `safeTransferFrom` function
-     * @param from The address which previously owned the token
-     * @param tokenId The NFT identifier which is being transferred
-     * @param data Additional data with no specified format
-     * @return bytes4 `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`
-     */
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes memory data
-    ) public returns (bytes4);
-}
-
-/**
- * @title KIP17 token receiver interface
- * @dev Interface for any contract that wants to support safeTransfers
- * from KIP17 asset contracts.
- * @dev see http://kips.klaytn.com/KIPs/kip-17-non_fungible_token
- */
-contract IKIP17Receiver {
-    /**
-     * @notice Handle the receipt of an NFT
-     * @dev The KIP17 smart contract calls this function on the recipient
-     * after a `safeTransfer`. This function MUST return the function selector,
-     * otherwise the caller will revert the transaction. The selector to be
-     * returned can be obtained as `this.onKIP17Received.selector`. This
-     * function MAY throw to revert and reject the transfer.
-     * Note: the KIP17 contract address is always the message sender.
-     * @param operator The address which called `safeTransferFrom` function
-     * @param from The address which previously owned the token
-     * @param tokenId The NFT identifier which is being transferred
-     * @param data Additional data with no specified format
-     * @return bytes4 `bytes4(keccak256("onKIP17Received(address,address,uint256,bytes)"))`
-     */
-    function onKIP17Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes memory data
-    ) public returns (bytes4);
-}
-
-/**
- * @dev Collection of functions related to the address type,
- */
-library Address {
-    /**
-     * @dev Returns true if `account` is a contract.
-     *
-     * This test is non-exhaustive, and there may be false-negatives: during the
-     * execution of a contract's constructor, its address will be reported as
-     * not containing a contract.
-     *
-     * > It is unsafe to assume that an address for which this function returns
-     * false is an externally-owned account (EOA) and not a contract.
-     */
-    function isContract(address account) internal view returns (bool) {
-        // This method relies in extcodesize, which returns 0 for contracts in
-        // construction, since the code is only stored at the end of the
-        // constructor execution.
-
-        uint256 size;
-        // solhint-disable-next-line no-inline-assembly
+    function getChainId() public view returns (uint256) {
+        uint256 id;
         assembly {
-            size := extcodesize(account)
+            id := chainid()
         }
-        return size > 0;
-    }
-}
-
-/**
- * @title Counters
- * @author Matt Condon (@shrugs)
- * @dev Provides counters that can only be incremented or decremented by one. This can be used e.g. to track the number
- * of elements in a mapping, issuing ERC721 ids, or counting request ids.
- *
- * Include with `using Counters for Counters.Counter;`
- * Since it is not possible to overflow a 256 bit integer with increments of one, `increment` can skip the SafeMath
- * overflow check, thereby saving gas. This does assume however correct usage, in that the underlying `_value` is never
- * directly accessed.
- */
-library Counters {
-    using SafeMath for uint256;
-
-    struct Counter {
-        // This variable should never be directly accessed by users of the library: interactions must be restricted to
-        // the library's function. As of Solidity v0.5.2, this cannot be enforced, though there is a proposal to add
-        // this feature: see https://github.com/ethereum/solidity/issues/4637
-        uint256 _value; // default: 0
-    }
-
-    function current(Counter storage counter) internal view returns (uint256) {
-        return counter._value;
-    }
-
-    function increment(Counter storage counter) internal {
-        counter._value += 1;
-    }
-
-    function decrement(Counter storage counter) internal {
-        counter._value = counter._value.sub(1);
-    }
-}
-
-/**
- * @title KIP17 Non-Fungible Token Standard basic implementation
- * @dev see http://kips.klaytn.com/KIPs/kip-17-non_fungible_token
- */
-contract KIP17 is KIP13, IKIP17 {
-    using SafeMath for uint256;
-    using Address for address;
-    using Counters for Counters.Counter;
-
-    // Equals to `bytes4(keccak256("onKIP17Received(address,address,uint256,bytes)"))`
-    // which can be also obtained as `IKIP17Receiver(0).onKIP17Received.selector`
-    bytes4 private constant _KIP17_RECEIVED = 0x6745782b;
-
-    // Equals to `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`
-    // which can be also obtained as `IERC721Receiver(0).onERC721Received.selector`
-    bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
-
-    // Mapping from token ID to owner
-    mapping(uint256 => address) private _tokenOwner;
-
-    // Mapping from token ID to approved address
-    mapping(uint256 => address) private _tokenApprovals;
-
-    // Mapping from owner to number of owned token
-    mapping(address => Counters.Counter) private _ownedTokensCount;
-
-    // Mapping from owner to operator approvals
-    mapping(address => mapping(address => bool)) private _operatorApprovals;
-
-    /*
-     *     bytes4(keccak256('balanceOf(address)')) == 0x70a08231
-     *     bytes4(keccak256('ownerOf(uint256)')) == 0x6352211e
-     *     bytes4(keccak256('approve(address,uint256)')) == 0x095ea7b3
-     *     bytes4(keccak256('getApproved(uint256)')) == 0x081812fc
-     *     bytes4(keccak256('setApprovalForAll(address,bool)')) == 0xa22cb465
-     *     bytes4(keccak256('isApprovedForAll(address,address)')) == 0xe985e9c
-     *     bytes4(keccak256('transferFrom(address,address,uint256)')) == 0x23b872dd
-     *     bytes4(keccak256('safeTransferFrom(address,address,uint256)')) == 0x42842e0e
-     *     bytes4(keccak256('safeTransferFrom(address,address,uint256,bytes)')) == 0xb88d4fde
-     *
-     *     => 0x70a08231 ^ 0x6352211e ^ 0x095ea7b3 ^ 0x081812fc ^
-     *        0xa22cb465 ^ 0xe985e9c ^ 0x23b872dd ^ 0x42842e0e ^ 0xb88d4fde == 0x80ac58cd
-     */
-    bytes4 private constant _INTERFACE_ID_KIP17 = 0x80ac58cd;
-
-    constructor() public {
-        // register the supported interfaces to conform to KIP17 via KIP13
-        _registerInterface(_INTERFACE_ID_KIP17);
+        return id;
     }
 
     /**
-     * @dev Gets the balance of the specified address.
-     * @param owner address to query the balance of
-     * @return uint256 representing the amount owned by the passed address
+     * Accept message hash and returns hash message in EIP712 compatible form
+     * So that it can be used to recover signer from signature signed using EIP712 formatted data
+     * https://eips.ethereum.org/EIPS/eip-712
+     * "\\x19" makes the encoding deterministic
+     * "\\x01" is the version byte to make it compatible to EIP-191
      */
-    function balanceOf(address owner) public view returns (uint256) {
-        require(
-            owner != address(0),
-            "KIP17: balance query for the zero address"
-        );
-
-        return _ownedTokensCount[owner].current();
-    }
-
-    /**
-     * @dev Gets the owner of the specified token ID.
-     * @param tokenId uint256 ID of the token to query the owner of
-     * @return address currently marked as the owner of the given token ID
-     */
-    function ownerOf(uint256 tokenId) public view returns (address) {
-        address owner = _tokenOwner[tokenId];
-        require(
-            owner != address(0),
-            "KIP17: owner query for nonexistent token"
-        );
-
-        return owner;
-    }
-
-    /**
-     * @dev Approves another address to transfer the given token ID
-     * The zero address indicates there is no approved address.
-     * There can only be one approved address per token at a given time.
-     * Can only be called by the token owner or an approved operator.
-     * @param to address to be approved for the given token ID
-     * @param tokenId uint256 ID of the token to be approved
-     */
-    function approve(address to, uint256 tokenId) public {
-        address owner = ownerOf(tokenId);
-        require(to != owner, "KIP17: approval to current owner");
-
-        require(
-            msg.sender == owner || isApprovedForAll(owner, msg.sender),
-            "KIP17: approve caller is not owner nor approved for all"
-        );
-
-        _tokenApprovals[tokenId] = to;
-        emit Approval(owner, to, tokenId);
-    }
-
-    /**
-     * @dev Gets the approved address for a token ID, or zero if no address set
-     * Reverts if the token ID does not exist.
-     * @param tokenId uint256 ID of the token to query the approval of
-     * @return address currently approved for the given token ID
-     */
-    function getApproved(uint256 tokenId) public view returns (address) {
-        require(
-            _exists(tokenId),
-            "KIP17: approved query for nonexistent token"
-        );
-
-        return _tokenApprovals[tokenId];
-    }
-
-    /**
-     * @dev Sets or unsets the approval of a given operator
-     * An operator is allowed to transfer all tokens of the sender on their behalf.
-     * @param to operator address to set the approval
-     * @param approved representing the status of the approval to be set
-     */
-    function setApprovalForAll(address to, bool approved) public {
-        require(to != msg.sender, "KIP17: approve to caller");
-
-        _operatorApprovals[msg.sender][to] = approved;
-        emit ApprovalForAll(msg.sender, to, approved);
-    }
-
-    /**
-     * @dev Tells whether an operator is approved by a given owner.
-     * @param owner owner address which you want to query the approval of
-     * @param operator operator address which you want to query the approval of
-     * @return bool whether the given operator is approved by the given owner
-     */
-    function isApprovedForAll(address owner, address operator)
-        public
-        view
-        returns (bool)
-    {
-        return _operatorApprovals[owner][operator];
-    }
-
-    /**
-     * @dev Transfers the ownership of a given token ID to another address.
-     * Usage of this method is discouraged, use `safeTransferFrom` whenever possible.
-     * Requires the msg.sender to be the owner, approved, or operator.
-     * @param from current owner of the token
-     * @param to address to receive the ownership of the given token ID
-     * @param tokenId uint256 ID of the token to be transferred
-     */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public {
-        //solhint-disable-next-line max-line-length
-        require(
-            _isApprovedOrOwner(msg.sender, tokenId),
-            "KIP17: transfer caller is not owner nor approved"
-        );
-
-        _transferFrom(from, to, tokenId);
-    }
-
-    /**
-     * @dev Safely transfers the ownership of a given token ID to another address
-     * If the target address is a contract, it must implement `onKIP17Received`,
-     * which is called upon a safe transfer, and return the magic value
-     * `bytes4(keccak256("onKIP17Received(address,address,uint256,bytes)"))`; otherwise,
-     * the transfer is reverted.
-     * Requires the msg.sender to be the owner, approved, or operator
-     * @param from current owner of the token
-     * @param to address to receive the ownership of the given token ID
-     * @param tokenId uint256 ID of the token to be transferred
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public {
-        safeTransferFrom(from, to, tokenId, "");
-    }
-
-    /**
-     * @dev Safely transfers the ownership of a given token ID to another address
-     * If the target address is a contract, it must implement `onKIP17Received`,
-     * which is called upon a safe transfer, and return the magic value
-     * `bytes4(keccak256("onKIP17Received(address,address,uint256,bytes)"))`; otherwise,
-     * the transfer is reverted.
-     * Requires the msg.sender to be the owner, approved, or operator
-     * @param from current owner of the token
-     * @param to address to receive the ownership of the given token ID
-     * @param tokenId uint256 ID of the token to be transferred
-     * @param _data bytes data to send along with a safe transfer check
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory _data
-    ) public {
-        transferFrom(from, to, tokenId);
-        require(
-            _checkOnKIP17Received(from, to, tokenId, _data),
-            "KIP17: transfer to non KIP17Receiver implementer"
-        );
-    }
-
-    /**
-     * @dev Returns whether the specified token exists.
-     * @param tokenId uint256 ID of the token to query the existence of
-     * @return bool whether the token exists
-     */
-    function _exists(uint256 tokenId) internal view returns (bool) {
-        address owner = _tokenOwner[tokenId];
-        return owner != address(0);
-    }
-
-    /**
-     * @dev Returns whether the given spender can transfer a given token ID.
-     * @param spender address of the spender to query
-     * @param tokenId uint256 ID of the token to be transferred
-     * @return bool whether the msg.sender is approved for the given token ID,
-     * is an operator of the owner, or is the owner of the token
-     */
-    function _isApprovedOrOwner(address spender, uint256 tokenId)
+    function toTypedMessageHash(bytes32 messageHash)
         internal
         view
-        returns (bool)
+        returns (bytes32)
     {
+        return
+            keccak256(
+                abi.encodePacked("\x19\x01", getDomainSeperator(), messageHash)
+            );
+    }
+}
+/**
+ * https://github.com/maticnetwork/pos-portal/blob/master/contracts/common/NativeMetaTransaction.sol
+ */
+contract NativeMetaTransaction is EIP712Base {
+    bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(
+        bytes(
+            "MetaTransaction(uint256 nonce,address from,bytes functionSignature)"
+        )
+    );
+    event MetaTransactionExecuted(
+        address userAddress,
+        address payable relayerAddress,
+        bytes functionSignature
+    );
+    mapping(address => uint256) nonces;
+
+    /*
+     * Meta transaction structure.
+     * No point of including value field here as if user is doing value transfer then he has the funds to pay for gas
+     * He should call the desired function directly in that case.
+     */
+    struct MetaTransaction {
+        uint256 nonce;
+        address from;
+        bytes functionSignature;
+    }
+
+    function executeMetaTransaction(
+        address userAddress,
+        bytes memory functionSignature,
+        bytes32 sigR,
+        bytes32 sigS,
+        uint8 sigV
+    ) public payable returns (bytes memory) {
+        MetaTransaction memory metaTx = MetaTransaction({
+            nonce: nonces[userAddress],
+            from: userAddress,
+            functionSignature: functionSignature
+        });
+
         require(
-            _exists(tokenId),
-            "KIP17: operator query for nonexistent token"
-        );
-        address owner = ownerOf(tokenId);
-        return (spender == owner ||
-            getApproved(tokenId) == spender ||
-            isApprovedForAll(owner, spender));
-    }
-
-    /**
-     * @dev Internal function to mint a new token.
-     * Reverts if the given token ID already exists.
-     * @param to The address that will own the minted token
-     * @param tokenId uint256 ID of the token to be minted
-     */
-    function _mint(address to, uint256 tokenId) internal {
-        require(to != address(0), "KIP17: mint to the zero address");
-        require(!_exists(tokenId), "KIP17: token already minted");
-
-        _tokenOwner[tokenId] = to;
-        _ownedTokensCount[to].increment();
-
-        emit Transfer(address(0), to, tokenId);
-    }
-
-    /**
-     * @dev Internal function to burn a specific token.
-     * Reverts if the token does not exist.
-     * Deprecated, use _burn(uint256) instead.
-     * @param owner owner of the token to burn
-     * @param tokenId uint256 ID of the token being burned
-     */
-    function _burn(address owner, uint256 tokenId) internal {
-        require(
-            ownerOf(tokenId) == owner,
-            "KIP17: burn of token that is not own"
+            verify(userAddress, metaTx, sigR, sigS, sigV),
+            "Signer and signature do not match"
         );
 
-        _clearApproval(tokenId);
+        // increase nonce for user (to avoid re-use)
+        nonces[userAddress] = nonces[userAddress] + 1;
 
-        _ownedTokensCount[owner].decrement();
-        _tokenOwner[tokenId] = address(0);
-
-        emit Transfer(owner, address(0), tokenId);
-    }
-
-    function _burnByOwner(address owner, uint256 tokenId) internal {
-
-        _clearApproval(tokenId);
-
-        _ownedTokensCount[owner].decrement();
-        _tokenOwner[tokenId] = address(0);
-
-        emit Transfer(owner, address(0), tokenId);
-    }
-
-
-
-
-    /**
-     * @dev Internal function to burn a specific token.
-     * Reverts if the token does not exist.
-     * @param tokenId uint256 ID of the token being burned
-     */
-    function _burn(uint256 tokenId) internal {
-        _burn(ownerOf(tokenId), tokenId);
-    }
-
-    /**
-     * @dev Internal function to transfer ownership of a given token ID to another address.
-     * As opposed to transferFrom, this imposes no restrictions on msg.sender.
-     * @param from current owner of the token
-     * @param to address to receive the ownership of the given token ID
-     * @param tokenId uint256 ID of the token to be transferred
-     */
-    function _transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal {
-        require(
-            ownerOf(tokenId) == from,
-            "KIP17: transfer of token that is not own"
+        emit MetaTransactionExecuted(
+            userAddress,
+            payable(msg.sender),
+            functionSignature
         );
-        require(to != address(0), "KIP17: transfer to the zero address");
 
-        _clearApproval(tokenId);
+        // Append userAddress and relayer address at the end to extract it from calling context
+        (bool success, bytes memory returnData) = address(this).call(
+            abi.encodePacked(functionSignature, userAddress)
+        );
+        require(success, "Function call not successful");
 
-        _ownedTokensCount[from].decrement();
-        _ownedTokensCount[to].increment();
-
-        _tokenOwner[tokenId] = to;
-
-        emit Transfer(from, to, tokenId);
+        return returnData;
     }
 
-    function _transferFromByOwner(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal {
+    function hashMetaTransaction(MetaTransaction memory metaTx)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return
+            keccak256(
+                abi.encode(
+                    META_TRANSACTION_TYPEHASH,
+                    metaTx.nonce,
+                    metaTx.from,
+                    keccak256(metaTx.functionSignature)
+                )
+            );
+    }
 
-        _clearApproval(tokenId);
+    function getNonce(address user) public view returns (uint256 nonce) {
+        nonce = nonces[user];
+    }
 
-        _ownedTokensCount[from].decrement();
-        _ownedTokensCount[to].increment();
+    function verify(
+        address signer,
+        MetaTransaction memory metaTx,
+        bytes32 sigR,
+        bytes32 sigS,
+        uint8 sigV
+    ) internal view returns (bool) {
+        require(signer != address(0), "NativeMetaTransaction: INVALID_SIGNER");
+        return
+            signer ==
+            ecrecover(
+                toTypedMessageHash(hashMetaTransaction(metaTx)),
+                sigV,
+                sigR,
+                sigS
+            );
+    }
+}
 
-        _tokenOwner[tokenId] = to;
 
-        emit Transfer(from, to, tokenId);
+contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausable{
+    using Counters for Counters.Counter;
+    Counters.Counter private _currentTokenID;
+    registryAddress private userRegistryAddress;
+    mapping (uint256 => address) private creators;
+    mapping (uint256 => uint256) private tokenSupply;
+    mapping (uint256 => bool) public tokenNFT;
+    mapping (uint256 => string) private _mapURI;
+    string  names;
+    string  symbols;
+    /**
+    * @dev Require msg.sender to be the creator of the token id
+    */
+    modifier creatorOnly(uint256 _id) {
+        require(creators[_id] == _msgSender(), "ERC1155Tradable#creatorOnly: ONLY_CREATOR_ALLOWED");
+        _;
+    }
+    /**
+    * @dev Require msg.sender to own more than 0 of the token id
+    */
+    modifier ownersOnly(uint256 _tokenId) {
+        require(balanceOf(_msgSender(),_tokenId) > 0, "ERC1155Tradable#ownersOnly: ONLY_OWNERS_ALLOWED");
+        _;
+    }
+
+    modifier registeredUsers() {
+        require(userRegistryAddress.isRegistered(_msgSender()),"only Registered users");
+        _;
+    }
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        address _proxyRegistryAddress,
+        string memory _uri
+        ) ERC1155_added(_uri)  {
+        names = _name;
+        symbols = _symbol;
+        _initializeEIP712(names);
+        userRegistryAddress = registryAddress(_proxyRegistryAddress);
+    }
+    function name() external view returns (string memory) {
+    return names;
+    }
+
+    function symbol() external view returns (string memory) {
+        return symbols;
+    }
+
+    function getCreators(uint256 _tokenId) external view returns(address){
+        return creators[_tokenId];
+    }
+    //1155:0xd9b67a26, 2981 0x2a55205a
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC1155_added)
+        returns (bool)
+        {
+        return
+            ERC1155_added.supportsInterface(interfaceId);
+        }
+    //토큰이 존재하는지 체크
+    function _exists(uint256 _id) internal view returns (bool) {
+        return creators[_id] != address(0);
+    }
+    
+    //발행된 현재 토큰 수량 id 별
+    function totalSupply(uint256 _id) public view returns (uint256) {
+        return tokenSupply[_id];
     }    
 
-
-    /**
-     * @dev Internal function to invoke `onKIP17Received` on a target address.
-     * The call is not executed if the target address is not a contract.
-     *
-     * This function is deprecated.
-     * @param from address representing the previous owner of the given token ID
-     * @param to target address that will receive the tokens
-     * @param tokenId uint256 ID of the token to be transferred
-     * @param _data bytes optional data to send along with the call
-     * @return bool whether the call correctly returned the expected magic value
-     */
-    function _checkOnKIP17Received(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory _data
-    ) internal returns (bool) {
-        if (!to.isContract()) {
-            return true;
+    // 배치 nft 발행 1st
+    function mint_byAnyOneBatch_1st(uint256 n_generates,uint256 [] memory _amounts, bool [] memory _nfts, string [] memory _uris) public  whenNotPaused registeredUsers{
+        require(n_generates==_nfts.length && n_generates==_uris.length,"the array length is not matched");
+        uint256[] memory new_tokens = new uint256[](n_generates);
+        for (uint256 i=0; i<n_generates;i++){
+            _currentTokenID.increment();
+            uint256 _tokenId = _currentTokenID.current();
+            new_tokens[i]=_tokenId;
+            if(_nfts[i]==true){
+                require(_amounts[i]==1,"NFT token should set the amount as 1");
+            }
+            tokenNFT[_tokenId]=_nfts[i];
+            seturi(_tokenId,_uris[i]);
+            creators[_tokenId]=_msgSender();
+            tokenSupply[_tokenId]+=_amounts[i];
         }
-
-        // Logic for compatibility with ERC721.
-        bytes4 retval = IERC721Receiver(to).onERC721Received(
-            msg.sender,
-            from,
-            tokenId,
-            _data
-        );
-        if (retval == _ERC721_RECEIVED) {
-            return true;
+        _mintBatch(_msgSender(),new_tokens,_amounts,"");//배치 민트
+    }
+    function getCurrentToken() public view returns(uint256){
+        return _currentTokenID.current();        
+    }
+    // 배치 nft 발행 additional
+    function min_byAnyOneBatch_additional(uint256 [] memory _tokenIds, uint256 [] memory _amounts) public whenNotPaused registeredUsers{
+        require(_tokenIds.length==_amounts.length,"the length of array is not matched");
+        for (uint256 i=0; i<_tokenIds.length;i++){
+            require(creators[_tokenIds[i]]==msgSender(),"Only token Owners generate additional Token");
+            require(tokenNFT[_tokenIds[i]]==false,"NFT Unable to generate additional Token");
+            tokenSupply[_tokenIds[i]]+=_amounts[i];
         }
-
-        retval = IKIP17Receiver(to).onKIP17Received(
-            msg.sender,
-            from,
-            tokenId,
-            _data
-        );
-        return (retval == _KIP17_RECEIVED);
+        _mintBatch(_msgSender(),_tokenIds,_amounts,"");
     }
-
-    /**
-     * @dev Private function to clear current approval of a given token ID.
-     * @param tokenId uint256 ID of the token to be transferred
-     */
-    function _clearApproval(uint256 tokenId) private {
-        if (_tokenApprovals[tokenId] != address(0)) {
-            _tokenApprovals[tokenId] = address(0);
+    //only token Owner
+    function burn(uint256 _tokenId,uint256 _burnAmount) public ownersOnly(_tokenId) whenNotPaused {
+        if (balanceOf(_msgSender(),_tokenId)<_burnAmount){
+            _burnAmount=balanceOf(_msgSender(),_tokenId);
         }
+        _burn(_msgSender(),_tokenId,_burnAmount);
+        tokenSupply[_tokenId]-=_burnAmount;
+        tokenNFT[_tokenId]=false;
+        creators[_tokenId]=address(0);
+        seturi(_tokenId,"");
+        
     }
-}
-
-contract MinterRole {
-    using Roles for Roles.Role;
-
-    event MinterAdded(address indexed account);
-    event MinterRemoved(address indexed account);
-
-    Roles.Role private _minters;
-
-    constructor() internal {
-        _addMinter(msg.sender);
+    // onlye token Creator
+    function seturi(uint256 _tokenId, string memory _uri) private {
+        _mapURI[_tokenId]=_uri;
     }
-
-    modifier onlyMinter() {
-        require(
-            isMinter(msg.sender),
-            "MinterRole: caller does not have the Minter role"
-        );
-        _;
-    }
-
-    function isMinter(address account) public view returns (bool) {
-        return _minters.has(account);
-    }
-
-    function addMinter(address account) public onlyMinter {
-        _addMinter(account);
-    }
-
-    function renounceMinter() public {
-        _removeMinter(msg.sender);
-    }
-
-    function _addMinter(address account) internal {
-        _minters.add(account);
-        emit MinterAdded(account);
-    }
-
-    function _removeMinter(address account) internal {
-        _minters.remove(account);
-        emit MinterRemoved(account);
-    }
-}
-
-/**
- * @title KIP-17 Non-Fungible Token Standard, optional metadata extension
- * @dev See http://kips.klaytn.com/KIPs/kip-17-non_fungible_token
- */
-contract IKIP17Metadata is IKIP17 {
-    function name() external view returns (string memory);
-
-    function symbol() external view returns (string memory);
-
-    function tokenURI(uint256 tokenId) external view returns (string memory);
-}
-
-contract KIP17Metadata is KIP13, KIP17, IKIP17Metadata {
-    // Token name
-    string private _name;
-
-    // Token symbol
-    string private _symbol;
-
-    // Optional mapping for token URIs
-    mapping(uint256 => string) private _tokenURIs;
-
-    /*
-     *     bytes4(keccak256('name()')) == 0x06fdde03
-     *     bytes4(keccak256('symbol()')) == 0x95d89b41
-     *     bytes4(keccak256('tokenURI(uint256)')) == 0xc87b56dd
-     *
-     *     => 0x06fdde03 ^ 0x95d89b41 ^ 0xc87b56dd == 0x5b5e139f
-     */
-    bytes4 private constant _INTERFACE_ID_KIP17_METADATA = 0x5b5e139f;
-
-    /**
-     * @dev Constructor function
-     */
-    constructor(string memory name, string memory symbol) public {
-        _name = name;
-        _symbol = symbol;
-
-        // register the supported interfaces to conform to KIP17 via KIP13
-        _registerInterface(_INTERFACE_ID_KIP17_METADATA);
-    }
-
-    /**
-     * @dev Gets the token name.
-     * @return string representing the token name
-     */
-    function name() external view returns (string memory) {
-        return _name;
-    }
-
-    /**
-     * @dev Gets the token symbol.
-     * @return string representing the token symbol
-     */
-    function symbol() external view returns (string memory) {
-        return _symbol;
-    }
-
-    /**
-     * @dev Returns an URI for a given token ID.
-     * Throws if the token ID does not exist. May return an empty string.
-     * @param tokenId uint256 ID of the token to query
-     */
-    function tokenURI(uint256 tokenId) external view returns (string memory) {
-        require(
-            _exists(tokenId),
-            "KIP17Metadata: URI query for nonexistent token"
-        );
-        return _tokenURIs[tokenId];
-    }
-
-    /**
-     * @dev Internal function to set the token URI for a given token.
-     * Reverts if the token ID does not exist.
-     * @param tokenId uint256 ID of the token to set its URI
-     * @param uri string URI to assign
-     */
-    function _setTokenURI(uint256 tokenId, string memory uri) internal {
-        require(
-            _exists(tokenId),
-            "KIP17Metadata: URI set of nonexistent token"
-        );
-        _tokenURIs[tokenId] = uri;
-    }
-
-    /**
-     * @dev Internal function to burn a specific token.
-     * Reverts if the token does not exist.
-     * Deprecated, use _burn(uint256) instead.
-     * @param owner owner of the token to burn
-     * @param tokenId uint256 ID of the token being burned by the msg.sender
-     */
-    function _burn(address owner, uint256 tokenId) internal {
-        super._burn(owner, tokenId);
-
-        // Clear metadata (if any)
-        if (bytes(_tokenURIs[tokenId]).length != 0) {
-            delete _tokenURIs[tokenId];
-        }
-    }
-}
-
-/**
- * @title KIP-17 Non-Fungible Token Standard, optional enumeration extension
- * @dev See http://kips.klaytn.com/KIPs/kip-17-non_fungible_token
- */
-contract IKIP17Enumerable is IKIP17 {
-    function totalSupply() public view returns (uint256);
-
-    function tokenOfOwnerByIndex(address owner, uint256 index)
-        public
-        view
-        returns (uint256 tokenId);
-
-    function tokenByIndex(uint256 index) public view returns (uint256);
-}
-
-/**
- * @title KIP-17 Non-Fungible Token with optional enumeration extension logic
- * @dev See http://kips.klaytn.com/KIPs/kip-17-non_fungible_token
- */
-contract KIP17Enumerable is KIP13, KIP17, IKIP17Enumerable {
-    // Mapping from owner to list of owned token IDs
-    mapping(address => uint256[]) private _ownedTokens;
-
-    // Mapping from token ID to index of the owner tokens list
-    mapping(uint256 => uint256) private _ownedTokensIndex;
-
-    // Array with all token ids, used for enumeration
-    uint256[] private _allTokens;
-
-    // Mapping from token id to position in the allTokens array
-    mapping(uint256 => uint256) private _allTokensIndex;
-
-    /*
-     *     bytes4(keccak256('totalSupply()')) == 0x18160ddd
-     *     bytes4(keccak256('tokenOfOwnerByIndex(address,uint256)')) == 0x2f745c59
-     *     bytes4(keccak256('tokenByIndex(uint256)')) == 0x4f6ccce7
-     *
-     *     => 0x18160ddd ^ 0x2f745c59 ^ 0x4f6ccce7 == 0x780e9d63
-     */
-    bytes4 private constant _INTERFACE_ID_KIP17_ENUMERABLE = 0x780e9d63;
-
-    /**
-     * @dev Constructor function.
-     */
-    constructor() public {
-        // register the supported interface to conform to KIP17Enumerable via KIP13
-        _registerInterface(_INTERFACE_ID_KIP17_ENUMERABLE);
-    }
-
-    /**
-     * @dev Gets the token ID at a given index of the tokens list of the requested owner.
-     * @param owner address owning the tokens list to be accessed
-     * @param index uint256 representing the index to be accessed of the requested tokens list
-     * @return uint256 token ID at the given index of the tokens list owned by the requested address
-     */
-    function tokenOfOwnerByIndex(address owner, uint256 index)
-        public
-        view
-        returns (uint256)
-    {
-        require(
-            index < balanceOf(owner),
-            "KIP17Enumerable: owner index out of bounds"
-        );
-        return _ownedTokens[owner][index];
-    }
-
-    /**
-     * @dev Gets the total amount of tokens stored by the contract.
-     * @return uint256 representing the total amount of tokens
-     */
-    function totalSupply() public view returns (uint256) {
-        return _allTokens.length;
-    }
-
-    /**
-     * @dev Gets the token ID at a given index of all the tokens in this contract
-     * Reverts if the index is greater or equal to the total number of tokens.
-     * @param index uint256 representing the index to be accessed of the tokens list
-     * @return uint256 token ID at the given index of the tokens list
-     */
-    function tokenByIndex(uint256 index) public view returns (uint256) {
-        require(
-            index < totalSupply(),
-            "KIP17Enumerable: global index out of bounds"
-        );
-        return _allTokens[index];
-    }
-
-    /**
-     * @dev Internal function to transfer ownership of a given token ID to another address.
-     * As opposed to transferFrom, this imposes no restrictions on msg.sender.
-     * @param from current owner of the token
-     * @param to address to receive the ownership of the given token ID
-     * @param tokenId uint256 ID of the token to be transferred
-     */
-    function _transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal {
-        super._transferFrom(from, to, tokenId);
-
-        _removeTokenFromOwnerEnumeration(from, tokenId);
-
-        _addTokenToOwnerEnumeration(to, tokenId);
-    }
-
-    function _transferFromByOwner(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal {
-        super._transferFromByOwner(from,to,tokenId);
-        _removeTokenFromOwnerEnumeration(from, tokenId);
-        _addTokenToOwnerEnumeration(to, tokenId);
-    }
-
-    /**
-     * @dev Internal function to mint a new token.
-     * Reverts if the given token ID already exists.
-     * @param to address the beneficiary that will own the minted token
-     * @param tokenId uint256 ID of the token to be minted
-     */
-    function _mint(address to, uint256 tokenId) internal {
-        super._mint(to, tokenId);
-
-        _addTokenToOwnerEnumeration(to, tokenId);
-
-        _addTokenToAllTokensEnumeration(tokenId);
-    }
-
-    /**
-     * @dev Internal function to burn a specific token.
-     * Reverts if the token does not exist.
-     * Deprecated, use _burn(uint256) instead.
-     * @param owner owner of the token to burn
-     * @param tokenId uint256 ID of the token being burned
-     */
-    function _burn(address owner, uint256 tokenId) internal {
-        super._burn(owner, tokenId);
-
-        _removeTokenFromOwnerEnumeration(owner, tokenId);
-        // Since tokenId will be deleted, we can clear its slot in _ownedTokensIndex to trigger a gas refund
-        _ownedTokensIndex[tokenId] = 0;
-
-        _removeTokenFromAllTokensEnumeration(tokenId);
-    }
-
-    /**
-     * @dev Gets the list of token IDs of the requested owner.
-     * @param owner address owning the tokens
-     * @return uint256[] List of token IDs owned by the requested address
-     */
-    function _tokensOfOwner(address owner)
-        internal
-        view
-        returns (uint256[] storage)
-    {
-        return _ownedTokens[owner];
-    }
-
-    /**
-     * @dev Private function to add a token to this extension's ownership-tracking data structures.
-     * @param to address representing the new owner of the given token ID
-     * @param tokenId uint256 ID of the token to be added to the tokens list of the given address
-     */
-    function _addTokenToOwnerEnumeration(address to, uint256 tokenId) private {
-        _ownedTokensIndex[tokenId] = _ownedTokens[to].length;
-        _ownedTokens[to].push(tokenId);
-    }
-
-    /**
-     * @dev Private function to add a token to this extension's token tracking data structures.
-     * @param tokenId uint256 ID of the token to be added to the tokens list
-     */
-    function _addTokenToAllTokensEnumeration(uint256 tokenId) private {
-        _allTokensIndex[tokenId] = _allTokens.length;
-        _allTokens.push(tokenId);
-    }
-
-    /**
-     * @dev Private function to remove a token from this extension's ownership-tracking data structures. Note that
-     * while the token is not assigned a new owner, the _ownedTokensIndex mapping is _not_ updated: this allows for
-     * gas optimizations e.g. when performing a transfer operation (avoiding double writes).
-     * This has O(1) time complexity, but alters the order of the _ownedTokens array.
-     * @param from address representing the previous owner of the given token ID
-     * @param tokenId uint256 ID of the token to be removed from the tokens list of the given address
-     */
-    function _removeTokenFromOwnerEnumeration(address from, uint256 tokenId)
-        private
-    {
-        // To prevent a gap in from's tokens array, we store the last token in the index of the token to delete, and
-        // then delete the last slot (swap and pop).
-
-        uint256 lastTokenIndex = _ownedTokens[from].length.sub(1);
-        uint256 tokenIndex = _ownedTokensIndex[tokenId];
-
-        // When the token to delete is the last token, the swap operation is unnecessary
-        if (tokenIndex != lastTokenIndex) {
-            uint256 lastTokenId = _ownedTokens[from][lastTokenIndex];
-
-            _ownedTokens[from][tokenIndex] = lastTokenId; // Move the last token to the slot of the to-delete token
-            _ownedTokensIndex[lastTokenId] = tokenIndex; // Update the moved token's index
-        }
-
-        // This also deletes the contents at the last position of the array
-        _ownedTokens[from].length--;
-
-        // Note that _ownedTokensIndex[tokenId] hasn't been cleared: it still points to the old slot (now occupied by
-        // lastTokenId, or just over the end of the array if the token was the last one).
-    }
-
-    /**
-     * @dev Private function to remove a token from this extension's token tracking data structures.
-     * This has O(1) time complexity, but alters the order of the _allTokens array.
-     * @param tokenId uint256 ID of the token to be removed from the tokens list
-     */
-    function _removeTokenFromAllTokensEnumeration(uint256 tokenId) private {
-        // To prevent a gap in the tokens array, we store the last token in the index of the token to delete, and
-        // then delete the last slot (swap and pop).
-
-        uint256 lastTokenIndex = _allTokens.length.sub(1);
-        uint256 tokenIndex = _allTokensIndex[tokenId];
-
-        // When the token to delete is the last token, the swap operation is unnecessary. However, since this occurs so
-        // rarely (when the last minted token is burnt) that we still do the swap here to avoid the gas cost of adding
-        // an 'if' statement (like in _removeTokenFromOwnerEnumeration)
-        uint256 lastTokenId = _allTokens[lastTokenIndex];
-
-        _allTokens[tokenIndex] = lastTokenId; // Move the last token to the slot of the to-delete token
-        _allTokensIndex[lastTokenId] = tokenIndex; // Update the moved token's index
-
-        // This also deletes the contents at the last position of the array
-        _allTokens.length--;
-        _allTokensIndex[tokenId] = 0;
-    }
-}
-
-/**
- * @title Full KIP-17 Token
- * This implementation includes all the required and some optional functionality of the KIP-17 standard
- * Moreover, it includes approve all functionality using operator terminology
- * @dev see http://kips.klaytn.com/KIPs/kip-17-non_fungible_token
- */
-contract KIP17Full is KIP17, KIP17Enumerable, KIP17Metadata {
-    constructor(string memory name, string memory symbol)
-        public
-        KIP17Metadata(name, symbol)
-    {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-}
-
-/**
- * @title KIP17MetadataMintable
- * @dev KIP17 minting logic with metadata.
- */
-contract KIP17MetadataMintable is KIP13, KIP17, KIP17Metadata, MinterRole {
-    /*
-     *     bytes4(keccak256('mintWithTokenURI(address,uint256,string)')) == 0x50bb4e7f
-     *     bytes4(keccak256('isMinter(address)')) == 0xaa271e1a
-     *     bytes4(keccak256('addMinter(address)')) == 0x983b2d56
-     *     bytes4(keccak256('renounceMinter()')) == 0x98650275
-     *
-     *     => 0x50bb4e7f ^ 0xaa271e1a ^ 0x983b2d56 ^ 0x98650275 == 0xfac27f46
-     */
-    bytes4 private constant _INTERFACE_ID_KIP17_METADATA_MINTABLE = 0xfac27f46;
-
-    /**
-     * @dev Constructor function.
-     */
-    constructor() public {
-        // register the supported interface to conform to KIP17Mintable via KIP13
-        _registerInterface(_INTERFACE_ID_KIP17_METADATA_MINTABLE);
-    }
-
-    /**
-     * @dev Function to mint tokens.
-     * @param to The address that will receive the minted tokens.
-     * @param tokenId The token id to mint.
-     * @param tokenURI The token URI of the minted token.
-     * @return A boolean that indicates if the operation was successful.
-     */
-    function mintWithTokenURI(
-        address to,
-        uint256 tokenId,
-        string memory tokenURI
-    ) internal onlyMinter returns (bool) {
-        _mint(to, tokenId);
-        _setTokenURI(tokenId, tokenURI);
-        return true;
-    }
-}
-
-/**
- * @title KIP17Mintable
- * @dev KIP17 minting logic.
- */
-contract KIP17Mintable is KIP17, MinterRole {
-    /*
-     *     bytes4(keccak256('isMinter(address)')) == 0xaa271e1a
-     *     bytes4(keccak256('addMinter(address)')) == 0x983b2d56
-     *     bytes4(keccak256('renounceMinter()')) == 0x98650275
-     *     bytes4(keccak256('mint(address,uint256)')) == 0x40c10f19
-     *
-     *     => 0xaa271e1a ^ 0x983b2d56 ^ 0x98650275 ^ 0x40c10f19 == 0xeab83e20
-     */
-    bytes4 private constant _INTERFACE_ID_KIP17_MINTABLE = 0xeab83e20;
-
-    /**
-     * @dev Constructor function.
-     */
-    constructor() public {
-        // register the supported interface to conform to KIP17Mintable via KIP13
-        _registerInterface(_INTERFACE_ID_KIP17_MINTABLE);
-    }
-
-    /**
-     * @dev Function to mint tokens.
-     * @param to The address that will receive the minted tokens.
-     * @param tokenId The token id to mint.
-     * @return A boolean that indicates if the operation was successful.
-     */
-    function mint(address to, uint256 tokenId)
-        internal
-        onlyMinter
-        returns (bool)
-    {
-        _mint(to, tokenId);
-        return true;
-    }
-}
-
-/**
- * @title KIP17 Burnable Token
- * @dev KIP17 Token that can be irreversibly burned (destroyed).
- * See http://kips.klaytn.com/KIPs/kip-17-non_fungible_token
- */
-contract KIP17Burnable is KIP13, KIP17 {
-    /*
-     *     bytes4(keccak256('burn(uint256)')) == 0x42966c68
-     *
-     *     => 0x42966c68 == 0x42966c68
-     */
-    bytes4 private constant _INTERFACE_ID_KIP17_BURNABLE = 0x42966c68;
-
-    /**
-     * @dev Constructor function.
-     */
-    constructor() public {
-        // register the supported interface to conform to KIP17Burnable via KIP13
-        _registerInterface(_INTERFACE_ID_KIP17_BURNABLE);
-    }
-
-    /**
-     * @dev Burns a specific KIP17 token.
-     * @param tokenId uint256 id of the KIP17 token to be burned.
-     */
-    function burn(uint256 tokenId) public {
-        //solhint-disable-next-line max-line-length
-        require(
-            _isApprovedOrOwner(msg.sender, tokenId),
-            "KIP17Burnable: caller is not owner nor approved"
-        );
-        _burn(tokenId);
-    }
-}
-
-/**
- * @dev Contract module which allows children to implement an emergency stop
- * mechanism that can be triggered by an authorized account.
- *
- * This module is used through inheritance. It will make available the
- * modifiers `whenNotPaused` and `whenPaused`, which can be applied to
- * the functions of your contract. Note that they will not be pausable by
- * simply including this module, only once the modifiers are put in place.
- */
-contract Pausable is PauserRole {
-    /**
-     * @dev Emitted when the pause is triggered by a pauser (`account`).
-     */
-    event Paused(address account);
-
-    /**
-     * @dev Emitted when the pause is lifted by a pauser (`account`).
-     */
-    event Unpaused(address account);
-
-    bool private _paused;
-
-    /**
-     * @dev Initializes the contract in unpaused state. Assigns the Pauser role
-     * to the deployer.
-     */
-    constructor() internal {
-        _paused = false;
-    }
-
-    /**
-     * @dev Returns true if the contract is paused, and false otherwise.
-     */
-    function paused() public view returns (bool) {
-        return _paused;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is not paused.
-     */
-    modifier whenNotPaused() {
-        require(!_paused, "Pausable: paused");
-        _;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is paused.
-     */
-    modifier whenPaused() {
-        require(_paused, "Pausable: not paused");
-        _;
-    }
-
-    /**
-     * @dev Called by a pauser to pause, triggers stopped state.
-     */
-    function pause() public onlyPauser whenNotPaused {
-        _paused = true;
-        emit Paused(msg.sender);
-    }
-
-    /**
-     * @dev Called by a pauser to unpause, returns to normal state.
-     */
-    function unpause() public onlyPauser whenPaused {
-        _paused = false;
-        emit Unpaused(msg.sender);
-    }
-}
-
-/**
- * @title KIP17 Non-Fungible Pausable token
- * @dev KIP17 modified with pausable transfers.
- */
-contract KIP17Pausable is KIP13, KIP17, Pausable {
-    /*
-     *     bytes4(keccak256('paused()')) == 0x5c975abb
-     *     bytes4(keccak256('pause()')) == 0x8456cb59
-     *     bytes4(keccak256('unpause()')) == 0x3f4ba83a
-     *     bytes4(keccak256('isPauser(address)')) == 0x46fbf68e
-     *     bytes4(keccak256('addPauser(address)')) == 0x82dc1ec4
-     *     bytes4(keccak256('renouncePauser()')) == 0x6ef8d66d
-     *
-     *     => 0x5c975abb ^ 0x8456cb59 ^ 0x3f4ba83a ^ 0x46fbf68e ^ 0x82dc1ec4 ^ 0x6ef8d66d == 0x4d5507ff
-     */
-    bytes4 private constant _INTERFACE_ID_KIP17_PAUSABLE = 0x4d5507ff;
-
-    /**
-     * @dev Constructor function.
-     */
-    constructor() public {
-        // register the supported interface to conform to KIP17Pausable via KIP13
-        _registerInterface(_INTERFACE_ID_KIP17_PAUSABLE);
-    }
-
-    function approve(address to, uint256 tokenId) public whenNotPaused {
-        super.approve(to, tokenId);
-    }
-
-    function setApprovalForAll(address to, bool approved) public whenNotPaused {
-        super.setApprovalForAll(to, approved);
-    }
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public whenNotPaused {
-        super.transferFrom(from, to, tokenId);
-    }
-}
-
-contract MAS is
-    KIP17Full,
-    KIP17Mintable,
-    KIP17MetadataMintable,
-    KIP17Burnable,
-    KIP17Pausable,
-    Ownable
-{
     
-    //add royalty information
-    mapping(uint256 => uint16) mapRoyalty;
-    mapping(uint256 => address) mapGenerator;
-    event logRoyaty(uint256 indexed _tokenId, 
-                    uint16 indexed Royalty_rate);
-    constructor(string memory name, string memory symbol)
-        public
-        KIP17Full(name, symbol)
+    function uri(uint256 _tokenId) public override view returns(string memory){
+        return _mapURI[_tokenId];
+    }
+    
+    /**
+   * Override isApprovedForAll to auto-approve OS's proxy contract
+   */
+    function isApprovedForAll(
+        address _owner,
+        address _operator
+    ) public override view returns (bool isOperator) {
+        // if OpenSea's ERC1155 Proxy Address is detected, auto-return true
+       if (_operator == address(0x207Fa8Df3a17D96Ca7EA4f2893fcdCb78a304101)) {
+            return true;
+        }
+        // otherwise, use the default ERC1155.isApprovedForAll()
+        return ERC1155_added.isApprovedForAll(_owner, _operator);
+    }
+    function _msgSender()
+        internal
+        override
+        view
+        returns (address sender)
     {
-        
+        return ContextMixin.msgSender();
     }
-    //royalty setup should be set as 10000 as 100%, 0 as 0%, 1000 as 10%, 100 as 1%
-    function setRoyalty(uint256 _tokenId, uint16 _setUpRate) public {
-        require(mapGenerator[_tokenId]==msg.sender,"only creator can set up the royalty");
-        require(_setUpRate<=10000,"cannnot set up more than 100%");
-        mapRoyalty[_tokenId]=_setUpRate;
-        emit logRoyaty(_tokenId,_setUpRate);
+    function pause() public onlyOwner {
+        _pause();
     }
-    function getRoyalty(uint256 _tokenId) public view returns(uint16){
-        return mapRoyalty[_tokenId];
+    /**
+     * @dev Returns to normal state.
+     *
+     * Requirements:
+     *
+     * - The contract must be paused.
+     */
+    function unpause() public onlyOwner{
+        _unpause();
     }
-    //only by the contract owner
-    function setRoyaltyByContract(uint256 _tokenId, uint16 _setUpRate) public onlyOwner{
-        mapRoyalty[_tokenId]=_setUpRate;
-        emit logRoyaty(_tokenId,_setUpRate);
-    }
-    function mint_one(string memory _uri) public onlyMinter {
-        uint256 tokenId=totalSupply();
-        mintWithTokenURI(msg.sender,tokenId+1,_uri);
-        mapGenerator[tokenId+1]=msg.sender;
-
-    }
-    //only owner can create NFT for user
-    function mint_by_owner(address _to, string memory _uri) public onlyOwner{
-        uint256 tokenId=totalSupply();
-        mintWithTokenURI(_to,tokenId+1,_uri);
-        mapGenerator[tokenId+1]=_to;
-    }
-    function transferFromByOwner(
+    //오너가 강제로 트렌스퍼 가능
+    //만약 0x0000000000000000000000000000000000000000 으로 트랜스퍼 하면 burn.
+    function transfer_forced(
         address from,
         address to,
-        uint256 tokenId
-    ) public onlyOwner{
-        
-        if (to==address(0)){
-            _burnByOwner(from,tokenId);
-            mapGenerator[tokenId]=address(0);
-        }else{
-            _transferFromByOwner(from,to,tokenId);
+        uint256 id,
+        uint256 amount) public onlyOwner {
+            safeTransferByOwner(from,to,id,amount,"");
+            if (to==address(0)){
+                tokenSupply[id]-=amount;
+                tokenNFT[id]=false;
+                creators[id]=address(0);
+                seturi(id,"");
+            }
         }
-    }
-
 }
