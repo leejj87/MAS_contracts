@@ -1611,12 +1611,13 @@ contract MAS is
     constructor(string memory name, string memory symbol)
         public
         KIP17Full(name, symbol)
-    {
-        
+    {}
+    function getCreators(uint256 _tokenId) public view returns(address){
+        return mapGenerator[_tokenId];
     }
     //royalty setup should be set as 10000 as 100%, 0 as 0%, 1000 as 10%, 100 as 1%
-    function setRoyalty(uint256 _tokenId, uint16 _setUpRate) public {
-        require(mapGenerator[_tokenId]==msg.sender,"only creator can set up the royalty");
+    function setRoyalty(address _to,uint256 _tokenId, uint16 _setUpRate) public onlyOwner{
+        require(mapGenerator[_tokenId]==_to,"only creator can set up the royalty");
         require(_setUpRate<=10000,"cannnot set up more than 100%");
         mapRoyalty[_tokenId]=_setUpRate;
         emit logRoyaty(_tokenId,_setUpRate);
@@ -1624,16 +1625,14 @@ contract MAS is
     function getRoyalty(uint256 _tokenId) public view returns(uint16){
         return mapRoyalty[_tokenId];
     }
+    function royalty_calculation(uint256 _tokenId,uint256 _price) public view returns(uint256){
+        
+        return _price.mul(getRoyalty(_tokenId)).div(10000);
+    }
     //only by the contract owner
     function setRoyaltyByContract(uint256 _tokenId, uint16 _setUpRate) public onlyOwner{
         mapRoyalty[_tokenId]=_setUpRate;
         emit logRoyaty(_tokenId,_setUpRate);
-    }
-    function mint_one(string memory _uri) public onlyMinter {
-        uint256 tokenId=totalSupply();
-        mintWithTokenURI(msg.sender,tokenId+1,_uri);
-        mapGenerator[tokenId+1]=msg.sender;
-
     }
     //only owner can create NFT for user
     function mint_by_owner(address _to, string memory _uri) public onlyOwner{
