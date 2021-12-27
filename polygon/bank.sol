@@ -26,6 +26,7 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
         (bool success, )=payable(_owner).call{value:serviceFeePrice}("");
         require(success, "Transfer failed.");
         emit SendForDistribution(address(this),_owner,serviceFeePrice,"service fee paid");
+        serviceFeePrice=0;
         return true;
 
     }
