@@ -23,5 +23,9 @@ Polygon
 Klaytn
 1. 컨트랙 deploy 순서
    1) factory.sol(MAS)
+   2) bank.sol
+   3) Sales_MAS.sol
 2. factory.sol(MAS)
-   - addMinter(address)에 유저 어드레스 등록후, 민트 가능하게함.
+   - 컨트랙트 오너가 전부 처리함.
+   - 로얄티 세팅
+
