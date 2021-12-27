@@ -38,7 +38,7 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
     }
     function withdraw(address _seller, uint256 _tokenId, uint256 soldPrice) public nonReentrant onlyOwner returns(bool) {
         //로얄티 정보
-        uint256 serviceFee=soldPrice*19/20;
+        uint256 serviceFee=soldPrice*1/20;
         serviceFeePrice+=serviceFee;
         
         uint256 royalty_price=0;
