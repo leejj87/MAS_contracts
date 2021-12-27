@@ -22,14 +22,20 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
         return address(this).balance;
     }
 
-    function withdrawServiceFee() public onlyOwner returns(bool) {
+    function withdrawServiceFee() public nonReentrant onlyOwner returns(bool) {
         (bool success, )=payable(_owner).call{value:serviceFeePrice}("");
         require(success, "Transfer failed.");
         emit SendForDistribution(address(this),_owner,serviceFeePrice,"service fee paid");
         return true;
 
     }
-    function withdraw(address _seller, uint256 _tokenId, uint256 soldPrice) public onlyOwner returns(bool) {
+    function withdrawRefund(uint256 _price) public onlyOwner nonReentrant returns(bool){
+        (bool success, )=payable(_owner).call{value:_price}("");
+        require(success, "Transfer failed.");
+        emit SendForDistribution(address(this),_owner,_price,"Refund");
+        return true;
+    }
+    function withdraw(address _seller, uint256 _tokenId, uint256 soldPrice) public nonReentrant onlyOwner returns(bool) {
         //로얄티 정보
         uint256 serviceFee=soldPrice*19/20;
         serviceFeePrice+=serviceFee;
@@ -47,7 +53,7 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
         uint256 leftOverPrice=soldPrice-serviceFee-royalty_price;
         
         
-        //수수료 5%
+        
         
         (bool success, )=payable(_seller).call{value:leftOverPrice}(""); 
         require(success, "Transfer failed.");
