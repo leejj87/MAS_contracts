@@ -29,8 +29,8 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
         return true;
 
     }
-    function withdrawRefund(uint256 _price) public onlyOwner nonReentrant returns(bool){
-        (bool success, )=payable(_owner).call{value:_price}("");
+    function withdrawRefund(address _to,uint256 _price) public onlyOwner nonReentrant returns(bool){
+        (bool success, )=payable(_to).call{value:_price}("");
         require(success, "Transfer failed.");
         emit SendForDistribution(address(this),_owner,_price,"Refund");
         return true;
