@@ -4,7 +4,7 @@ import "./ERC1155_modifier.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "./MAS_WhiteLists.sol";
+//import "./MAS_WhiteLists.sol";
 
 abstract contract ContextMixin {
     function msgSender()
@@ -217,7 +217,7 @@ contract NativeMetaTransaction is EIP712Base {
 contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausable{
     using Counters for Counters.Counter;
     Counters.Counter private _currentTokenID;
-    registryAddress private userRegistryAddress;
+    //registryAddress private userRegistryAddress;
     mapping (uint256 => address) private creators;
     mapping (uint256 => uint256) private tokenSupply;
     mapping (uint256 => bool) public tokenNFT;
@@ -239,20 +239,20 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
         _;
     }
 
-    modifier registeredUsers() {
-        require(userRegistryAddress.isRegistered(_msgSender()),"only Registered users");
-        _;
-    }
+    // modifier registeredUsers() {
+    //     require(userRegistryAddress.isRegistered(_msgSender()),"only Registered users");
+    //     _;
+    // }
     constructor(
         string memory _name,
         string memory _symbol,
-        address _proxyRegistryAddress,
+        //address _proxyRegistryAddress,
         string memory _uri
         ) ERC1155_added(_uri)  {
         names = _name;
         symbols = _symbol;
         _initializeEIP712(names);
-        userRegistryAddress = registryAddress(_proxyRegistryAddress);
+        //userRegistryAddress = registryAddress(_proxyRegistryAddress);
     }
     function name() external view returns (string memory) {
     return names;
@@ -287,7 +287,8 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
     }    
 
     // 배치 nft 발행 1st
-    function mint_byAnyOneBatch_1st(uint256 n_generates,uint256 [] memory _amounts, bool [] memory _nfts, string [] memory _uris) public  whenNotPaused registeredUsers{
+    function mintBatch_by_Owner_1st(address _to, uint256 n_generates,uint256 [] memory _amounts, bool [] memory _nfts, string [] memory _uris) public onlyOwner whenNotPaused{
+        require(_to != address(0),"To address should not be 0");
         require(n_generates==_nfts.length && n_generates==_uris.length,"the array length is not matched");
         uint256[] memory new_tokens = new uint256[](n_generates);
         for (uint256 i=0; i<n_generates;i++){
@@ -299,35 +300,40 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
             }
             tokenNFT[_tokenId]=_nfts[i];
             seturi(_tokenId,_uris[i]);
-            creators[_tokenId]=_msgSender();
+            creators[_tokenId]=_to;
             tokenSupply[_tokenId]+=_amounts[i];
         }
-        _mintBatch(_msgSender(),new_tokens,_amounts,"");//배치 민트
-    }
-    function getCurrentToken() public view returns(uint256){
-        return _currentTokenID.current();        
+        _mintBatch(_to,new_tokens,_amounts,"");//배치 민트
+
     }
     // 배치 nft 발행 additional
-    function min_byAnyOneBatch_additional(uint256 [] memory _tokenIds, uint256 [] memory _amounts) public whenNotPaused registeredUsers{
+    function min_byAnyOneBatch_additional(address _to,uint256 [] memory _tokenIds, uint256 [] memory _amounts) public whenNotPaused onlyOwner{
+        require(_to != address(0),"To address should not be 0");
         require(_tokenIds.length==_amounts.length,"the length of array is not matched");
         for (uint256 i=0; i<_tokenIds.length;i++){
-            require(creators[_tokenIds[i]]==msgSender(),"Only token Owners generate additional Token");
+            require(creators[_tokenIds[i]]==_to,"Only token Owners generate additional Token");
             require(tokenNFT[_tokenIds[i]]==false,"NFT Unable to generate additional Token");
             tokenSupply[_tokenIds[i]]+=_amounts[i];
         }
-        _mintBatch(_msgSender(),_tokenIds,_amounts,"");
+        _mintBatch(_to,_tokenIds,_amounts,"");
+    }
+     function getCurrentToken() public view returns(uint256){
+        return _currentTokenID.current();        
     }
     //only token Owner
-    function burn(uint256 _tokenId,uint256 _burnAmount) public ownersOnly(_tokenId) whenNotPaused {
-        if (balanceOf(_msgSender(),_tokenId)<_burnAmount){
-            _burnAmount=balanceOf(_msgSender(),_tokenId);
+    function burn(address _to,uint256 _tokenId,uint256 _burnAmount) public onlyOwner whenNotPaused {
+        require(balanceOf(_to,_tokenId)>0,"To address should own the tokens");
+        if (balanceOf(_to,_tokenId)<_burnAmount){
+            _burnAmount=balanceOf(_to,_tokenId);
         }
-        _burn(_msgSender(),_tokenId,_burnAmount);
+        _burn(_to,_tokenId,_burnAmount);
         tokenSupply[_tokenId]-=_burnAmount;
+        
+        if (tokenSupply[_tokenId]==0){
+        seturi(_tokenId,"");
         tokenNFT[_tokenId]=false;
         creators[_tokenId]=address(0);
-        seturi(_tokenId,"");
-        
+        }
     }
     // onlye token Creator
     function seturi(uint256 _tokenId, string memory _uri) private {
