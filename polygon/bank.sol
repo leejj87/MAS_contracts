@@ -33,7 +33,7 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
     function withdrawRefund(address _to,uint256 _price) public onlyOwner nonReentrant returns(bool){
         (bool success, )=payable(_to).call{value:_price}("");
         require(success, "Transfer failed.");
-        emit SendForDistribution(address(this),_owner,_price,"Refund");
+        emit SendForDistribution(address(this),_to,_price,"Refund");
         return true;
     }
     function withdraw(address _seller, uint256 _tokenId, uint256 soldPrice) public nonReentrant onlyOwner returns(bool) {
