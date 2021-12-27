@@ -9,7 +9,7 @@ contract royalty is Ownable,ERC2981PerTokenRoyalties{
         uint16 royalty_percentage;
         bool royalty_set;
     } 
-    mapping (uint256 => Royalty_data) public royaltyInfo;
+    mapping (uint256 => Royalty_data) royaltyInfo;
     modifier creatorOnly(uint256 _tokenId){
         require(nftAddress.getCreators(_tokenId) == msg.sender,"ERC1155Tradable#creatorOnly: ONLY_CREATOR_ALLOWED");
         _;
@@ -29,14 +29,18 @@ contract royalty is Ownable,ERC2981PerTokenRoyalties{
         return
             ERC2981Base.supportsInterface(interfaceId);
         }
-    function getRoyalty(uint256 _tokenId) public view returns(Royalty_data memory) {
-        return royaltyInfo[_tokenId];
+    function getRoyalty(uint256 _tokenId) public view returns(uint16) {
+        if(royaltyInfo[_tokenId].royalty_set == true){
+            return royaltyInfo[_tokenId].royalty_percentage;
+        }else{
+            return 0;
+        }
     }
     //로얄티 계산
     function royalty_calculation(uint256 _token_Id, uint256 _price) public view returns(uint256){
         uint256 royaltyRate=0;
-        if (getRoyalty(_token_Id).royalty_set){
-            royaltyRate=getRoyalty(_token_Id).royalty_percentage;
+        if (royaltyInfo[_token_Id].royalty_set){
+            royaltyRate=royaltyInfo[_token_Id].royalty_percentage;
         }else{
             royaltyRate=0;
         }
@@ -48,7 +52,7 @@ contract royalty is Ownable,ERC2981PerTokenRoyalties{
         royaltyInfo[_tokenId].royalty_set=_royalty;
         emit royalty_record(_msgSender(),_tokenId,_new_royalty);
     }
-    function setRoyalty(uint256 _tokenId,uint16 _royalties) public creatorOnly(_tokenId){
+    function setRoyalty(uint256 _tokenId,uint16 _royalties) public onlyOwner{
         //only original owner can set the royalty!
         //royalties 0%=>0,10% => 1000, 50% => 5000,100% => 10000
         require(_royalties>0,"royalties should set more than 0");//set proper values for royalty not 0
@@ -56,7 +60,7 @@ contract royalty is Ownable,ERC2981PerTokenRoyalties{
         royaltyInfo[_tokenId]=Royalty_data(_royalties,true);
         emit royalty_record(_msgSender(),_tokenId,_royalties);
         }
-    function removeRoyalty(uint256 _tokenId) public creatorOnly(_tokenId){
+    function removeRoyalty(uint256 _tokenId) public onlyOwner{
         _setTokenRoyalty(_tokenId,_msgSender(),0);
         royaltyInfo[_tokenId]=Royalty_data(0,false);
         emit royalty_record(_msgSender(),_tokenId,0);
