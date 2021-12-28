@@ -1,112 +1,5 @@
 pragma solidity ^0.5.0;
-/*
- * @dev Provides information about the current execution context, including the
- * sender of the transaction and its data. While these are generally available
- * via msg.sender and msg.data, they should not be accessed in such a direct
- * manner, since when dealing with GSN meta-transactions the account sending and
- * paying for execution may not be the actual sender (as far as an application
- * is concerned).
- *
- * This contract is only required for intermediate, library-like contracts.
- */
-contract Context {
-    // Empty internal constructor, to prevent people from mistakenly deploying
-    // an instance of this contract, which should be used via inheritance.
-    constructor() internal {}
-
-    // solhint-disable-previous-line no-empty-blocks
-
-    function _msgSender() internal view returns (address payable) {
-        return msg.sender;
-    }
-
-    function _msgData() internal view returns (bytes memory) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
-        return msg.data;
-    }
-}
-
-/**
- * @dev Contract module which provides a basic access control mechanism, where
- * there is an account (an owner) that can be granted exclusive access to
- * specific functions.
- *
- * This module is used through inheritance. It will make available the modifier
- * `onlyOwner`, which can be applied to your functions to restrict their use to
- * the owner.
- */
-contract Ownable is Context {
-    address private _owner;
-
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
-
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    constructor() internal {
-        address msgSender = _msgSender();
-        _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
-    }
-
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    function owner() public view returns (address) {
-        return _owner;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(isOwner(), "Ownable: caller is not the owner");
-        _;
-    }
-
-    /**
-     * @dev Returns true if the caller is the current owner.
-     */
-    function isOwner() public view returns (bool) {
-        return _msgSender() == _owner;
-    }
-
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public onlyOwner {
-        emit OwnershipTransferred(_owner, address(0));
-        _owner = address(0);
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public onlyOwner {
-        _transferOwnership(newOwner);
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     */
-    function _transferOwnership(address newOwner) internal {
-        require(
-            newOwner != address(0),
-            "Ownable: new owner is the zero address"
-        );
-        emit OwnershipTransferred(_owner, newOwner);
-        _owner = newOwner;
-    }
-}
-
+import "./whiteLists.sol";
 /**
  *
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -236,94 +129,6 @@ interface IKIP13 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
 
-/**
- * @title Roles
- * @dev Library for managing addresses assigned to a Role.
- */
-library Roles {
-    struct Role {
-        mapping(address => bool) bearer;
-    }
-
-    /**
-     * @dev Give an account access to this role.
-     */
-    function add(Role storage role, address account) internal {
-        require(!has(role, account), "Roles: account already has role");
-        role.bearer[account] = true;
-    }
-
-    /**
-     * @dev Remove an account's access to this role.
-     */
-    function remove(Role storage role, address account) internal {
-        require(has(role, account), "Roles: account does not have role");
-        role.bearer[account] = false;
-    }
-
-    /**
-     * @dev Check if an account has this role.
-     * @return bool
-     */
-    function has(Role storage role, address account)
-        internal
-        view
-        returns (bool)
-    {
-        require(account != address(0), "Roles: account is the zero address");
-        return role.bearer[account];
-    }
-}
-
-contract PauserRole {
-    using Roles for Roles.Role;
-
-    event PauserAdded(address indexed account);
-    event PauserRemoved(address indexed account);
-
-    Roles.Role private _pausers;
-
-    constructor() internal {
-        _addPauser(msg.sender);
-    }
-
-    modifier onlyPauser() {
-        require(
-            isPauser(msg.sender),
-            "PauserRole: caller does not have the Pauser role"
-        );
-        _;
-    }
-
-    function isPauser(address account) public view returns (bool) {
-        return _pausers.has(account);
-    }
-
-    function addPauser(address account) public onlyPauser {
-        _addPauser(account);
-    }
-
-    function renouncePauser() public {
-        _removePauser(msg.sender);
-    }
-
-    function _addPauser(address account) internal {
-        _pausers.add(account);
-        emit PauserAdded(account);
-    }
-
-    function _removePauser(address account) internal {
-        _pausers.remove(account);
-        emit PauserRemoved(account);
-    }
-}
-
-/**
- * @dev Implementation of the `IKIP13` interface.
- *
- * Contracts may inherit from this and call `_registerInterface` to declare
- * their support of an interface.
- */
 contract KIP13 is IKIP13 {
     /*
      * bytes4(keccak256('supportsInterface(bytes4)')) == 0x01ffc9a7
@@ -1491,66 +1296,6 @@ contract KIP17Burnable is KIP13, KIP17 {
  * the functions of your contract. Note that they will not be pausable by
  * simply including this module, only once the modifiers are put in place.
  */
-contract Pausable is PauserRole {
-    /**
-     * @dev Emitted when the pause is triggered by a pauser (`account`).
-     */
-    event Paused(address account);
-
-    /**
-     * @dev Emitted when the pause is lifted by a pauser (`account`).
-     */
-    event Unpaused(address account);
-
-    bool private _paused;
-
-    /**
-     * @dev Initializes the contract in unpaused state. Assigns the Pauser role
-     * to the deployer.
-     */
-    constructor() internal {
-        _paused = false;
-    }
-
-    /**
-     * @dev Returns true if the contract is paused, and false otherwise.
-     */
-    function paused() public view returns (bool) {
-        return _paused;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is not paused.
-     */
-    modifier whenNotPaused() {
-        require(!_paused, "Pausable: paused");
-        _;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is paused.
-     */
-    modifier whenPaused() {
-        require(_paused, "Pausable: not paused");
-        _;
-    }
-
-    /**
-     * @dev Called by a pauser to pause, triggers stopped state.
-     */
-    function pause() public onlyPauser whenNotPaused {
-        _paused = true;
-        emit Paused(msg.sender);
-    }
-
-    /**
-     * @dev Called by a pauser to unpause, returns to normal state.
-     */
-    function unpause() public onlyPauser whenPaused {
-        _paused = false;
-        emit Unpaused(msg.sender);
-    }
-}
 
 /**
  * @title KIP17 Non-Fungible Pausable token
@@ -1606,17 +1351,22 @@ contract MAS is
     //add royalty information
     mapping(uint256 => uint16) mapRoyalty;
     mapping(uint256 => address) mapGenerator;
+    WhiteLists private whiteListsAddress;
     event logRoyaty(uint256 indexed _tokenId, 
                     uint16 indexed Royalty_rate);
-    constructor(string memory name, string memory symbol)
+    modifier whiteUsersOnly(){
+        require(whiteListsAddress.getWhiteLists(_msgSender())==true,"operators in the whitelist only");
+        _;
+    }
+    constructor(string memory name, string memory symbol,address _whiteListsAddress)
         public
         KIP17Full(name, symbol)
-    {}
+    {whiteListsAddress = WhiteLists(_whiteListsAddress);}
     function getCreators(uint256 _tokenId) public view returns(address){
         return mapGenerator[_tokenId];
     }
     //royalty setup should be set as 10000 as 100%, 0 as 0%, 1000 as 10%, 100 as 1%
-    function setRoyalty(address _to,uint256 _tokenId, uint16 _setUpRate) public onlyOwner{
+    function setRoyalty(address _to,uint256 _tokenId, uint16 _setUpRate) public whiteUsersOnly{
         require(mapGenerator[_tokenId]==_to,"only creator can set up the royalty");
         require(_setUpRate<=10000,"cannnot set up more than 100%");
         mapRoyalty[_tokenId]=_setUpRate;
@@ -1630,12 +1380,12 @@ contract MAS is
         return _price.mul(getRoyalty(_tokenId)).div(10000);
     }
     //only by the contract owner
-    function setRoyaltyByContract(uint256 _tokenId, uint16 _setUpRate) public onlyOwner{
+    function setRoyaltyByContract(uint256 _tokenId, uint16 _setUpRate) public whiteUsersOnly{
         mapRoyalty[_tokenId]=_setUpRate;
         emit logRoyaty(_tokenId,_setUpRate);
     }
     //only owner can create NFT for user
-    function mint_by_owner(address _to, string memory _uri) public onlyOwner{
+    function mint_by_owner(address _to, string memory _uri) public whiteUsersOnly{
         uint256 tokenId=totalSupply();
         mintWithTokenURI(_to,tokenId+1,_uri);
         mapGenerator[tokenId+1]=_to;
@@ -1644,7 +1394,7 @@ contract MAS is
         address from,
         address to,
         uint256 tokenId
-    ) public onlyOwner{
+    ) public whiteUsersOnly{
         
         if (to==address(0)){
             _burnByOwner(from,tokenId);
