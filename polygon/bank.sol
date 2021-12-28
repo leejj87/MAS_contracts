@@ -6,23 +6,31 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "./Mas_Royalty.sol";
 import "./factory.sol";
+import "./whiteLists.sol";
 contract Bank is Ownable,Pausable,ReentrancyGuard {
     using Counters for Counters.Counter;
     Counters.Counter private _accountIDX;
     MAS public nftAddress;
     royalty public royaltyAddress;
+    WhiteLists private whiteListsAddress;
     uint256 serviceFeePrice;
     address _owner;
     address _salesAddress;
     event Received(address _from, uint256 value);
     event SendForDistribution(address _from, address _to, uint256 value, string  purpose);
     constructor (address _masAddress,
-                address _royaltyAddress){
+                address _royaltyAddress,
+                address _whiteListsAddress){
                     nftAddress = MAS(_masAddress);
                     royaltyAddress = royalty(_royaltyAddress);
                     _owner = msg.sender;
                     serviceFeePrice=0;
+                    whiteListsAddress = WhiteLists(_whiteListsAddress);
                 }
+    modifier whiteUsersOnly(){
+        require(whiteListsAddress.getWhiteLists(_msgSender())==true,"operators in the whitelist only");
+        _;
+    }
     struct accountDetail{
         uint256 _tokenId;
         address _buyer;
@@ -33,7 +41,7 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
     }
     mapping (uint256 => accountDetail) account;
 
-    function setSalesContract(address salesContract) public onlyOwner {
+    function setSalesContract(address salesContract) public whiteUsersOnly {
         _salesAddress = salesContract;
     }
 
@@ -51,45 +59,45 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
     }
 
 
-    function getBalance() public onlyOwner view returns(uint256){
+    function getBalance() public whiteUsersOnly view returns(uint256){
         return address(this).balance;
     }
-    function getserviceFee() public onlyOwner view returns(uint256){
+    function getserviceFee() public whiteUsersOnly view returns(uint256){
         return serviceFeePrice;
     }
-    function getAccount_tokenId(uint256 _accountIdx) public onlyOwner view returns(uint256){
+    function getAccount_tokenId(uint256 _accountIdx) public whiteUsersOnly view returns(uint256){
         return account[_accountIdx]._tokenId;
     }
-    function getAccount_buyer(uint256 _accountIdx) public onlyOwner view returns(address){
+    function getAccount_buyer(uint256 _accountIdx) public whiteUsersOnly view returns(address){
         return account[_accountIdx]._buyer;
     }
-    function getAccount_seller(uint256 _accountIdx) public onlyOwner view returns(address){
+    function getAccount_seller(uint256 _accountIdx) public whiteUsersOnly view returns(address){
         return account[_accountIdx]._seller;
     }
-    function getAccount_price(uint256 _accountIdx) public onlyOwner view returns(uint256){
+    function getAccount_price(uint256 _accountIdx) public whiteUsersOnly view returns(uint256){
         return account[_accountIdx]._sendPrice;
     } 
-    function getAccount_distributed(uint256 _accountIdx) public onlyOwner view returns(bool){
+    function getAccount_distributed(uint256 _accountIdx) public whiteUsersOnly view returns(bool){
         return account[_accountIdx]._distributed;
     } 
-    function getAccount_reported(uint256 _accountIdx) public onlyOwner view returns(bool){
+    function getAccount_reported(uint256 _accountIdx) public whiteUsersOnly view returns(bool){
         return account[_accountIdx]._reported;
     } 
-    function withdrawServiceFee() public nonReentrant onlyOwner returns(bool) {
+    function withdrawServiceFee() public nonReentrant whiteUsersOnly returns(bool) {
         (bool success, )=payable(_owner).call{value:serviceFeePrice}("");
         require(success, "Transfer failed.");
         emit SendForDistribution(address(this),_owner,serviceFeePrice,"service fee paid");
         serviceFeePrice=0;
         return true;
     }
-    function setReported(uint256 _accountIdx) public onlyOwner nonReentrant whenNotPaused {
+    function setReported(uint256 _accountIdx) public whiteUsersOnly nonReentrant whenNotPaused {
         account[_accountIdx]._reported=true;
     }
-    function setRemoveReported(uint256 _accountIdx) public onlyOwner nonReentrant whenNotPaused{
+    function setRemoveReported(uint256 _accountIdx) public whiteUsersOnly nonReentrant whenNotPaused{
         account[_accountIdx]._reported=false;
     }
     //refund if only if the NFT is reported as outlawed
-    function withdrawRefund(uint256 _accountIdx) public onlyOwner nonReentrant whenNotPaused returns(bool){
+    function withdrawRefund(uint256 _accountIdx) public whiteUsersOnly nonReentrant whenNotPaused returns(bool){
         require(account[_accountIdx]._reported==true,"this transaction is not reported");
         address buyer = account[_accountIdx]._buyer;
         uint256 refundPrice = account[_accountIdx]._sendPrice;
@@ -97,7 +105,7 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
         require(success, "Transfer failed.");
         return true;
     }
-    function withdraw(uint256 _depositId, uint256 _tokenId) public nonReentrant whenNotPaused onlyOwner returns(bool) {
+    function withdraw(uint256 _depositId, uint256 _tokenId) public nonReentrant whenNotPaused whiteUsersOnly returns(bool) {
         //로얄티 정보
         require(account[_depositId]._distributed==false && account[_depositId]._reported==false,"the deposit already either distributed or reported");
         require(account[_depositId]._tokenId==_tokenId,"token Id and banckAccount are not matched");
@@ -117,6 +125,10 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
             }
         }
         uint256 leftOverPrice=_soldPrice-serviceFee-royalty_price;
+        
+        
+        
+        
         (bool success, )=payable(_seller).call{value:leftOverPrice}(""); 
         require(success, "Transfer failed.");
         emit SendForDistribution(address(this),_seller,leftOverPrice,"To Seller");
