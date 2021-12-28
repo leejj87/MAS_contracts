@@ -25,7 +25,32 @@ Klaytn
    1) factory.sol(MAS)
    2) bank.sol
    3) Sales_MAS.sol
-2. factory.sol(MAS)
-   - 컨트랙트 오너가 전부 처리함.
-   - 로얄티 세팅
+  MAS
+  1. 기능
+     1)민팅
+     2)로얄티 세팅
+     3)Burn & 강제 트랜스퍼 by Contract Owner
+     4)ERC721 기본 함수 사용.
+  2. Deploy
+     1)Name & Symbol 입력.
+  4.	Functions
+    1)	Getter
+      a.	getCreators(uint256 _tokenId) public view returns(address)
+        i.	최초 토큰 생성자 주소 리턴
+      b.	getRoyalty(uint256 _tokenId) public view returns(uint16)
+        i.	로얄티 % 리턴
+      c.	royalty_calculation(uint256 _tokenId,uint256 _price) public view returns(uint256)
+        i.	로얄티 계산 결과
+    2)	Setter
+      a.	setRoyaltyByContract(uint256 _tokenId, uint16 _setUpRate) public onlyOwner
+        i.	로얄티 수정. 단 소숫점을 제공 안함. 100%=>10000,10%=>1000,0%=>0
+      b.	setRoyalty(address _to,uint256 _tokenId, uint16 _setUpRate) public onlyOwner
+        i.	로얄티 최초 입력.
+    3)	일반 함수
+      a.	mint_by_owner(address _to, string memory _uri) public onlyOwner
+        i.	NFT 민트 함수
+      b.	transferFromByOwner(address from, address to, uint256 tokenId) public onlyOwner
+        i.	오너 강제 NFT 이동.
+        ii.	Burn 시킬 경우, address(0) 을 입력. 
+
 
