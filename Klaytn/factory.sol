@@ -1390,7 +1390,7 @@ contract MAS is
         mintWithTokenURI(_to,tokenId+1,_uri);
         mapGenerator[tokenId+1]=_to;
     }
-    function transferFromByOwner(
+    function transferByOwner(
         address from,
         address to,
         uint256 tokenId
