@@ -17,7 +17,19 @@ contract WhiteLists is Ownable, Pausable {
     function getWhiteLists(address _address) public view returns(bool){
         return white_lists[_address];
     }
-
+    function pause() public onlyOwner {
+        _pause();
+    }
+    /**
+     * @dev Returns to normal state.
+     *
+     * Requirements:
+     *
+     * - The contract must be paused.
+     */
+    function unpause() public onlyOwner{
+        _unpause();
+    }
 
 
 
