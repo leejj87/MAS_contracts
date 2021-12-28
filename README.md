@@ -1,10 +1,11 @@
 # MAS_contracts
 Polygon
 1. 컨트랙 deploy 순서
-  1)factory.sol (MAS)
-  2)MASRoyalty.sol (royalty)
-  3)bank.sol(Bank)
-  4)Sales.sol
+  1)whiteLists.sol(whitelist)
+  2)factory.sol (MAS)
+  3)MASRoyalty.sol (royalty)
+  4)bank.sol(Bank)
+  5)Sales.sol
   
 2. 1) factory.sol(MAS)
     - transfer_forced() 함수는 컨트렉트 오너가 토큰을 조정 할 수 있음. _to 주소에 0x0000000000000000000000000000000000000000 주소를 넣으면 강제 burn과 같은 역활.
