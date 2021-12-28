@@ -4,7 +4,7 @@ import "./ERC1155_modifier.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-//import "./MAS_WhiteLists.sol";
+import "./whiteLists.sol";
 
 abstract contract ContextMixin {
     function msgSender()
@@ -217,7 +217,7 @@ contract NativeMetaTransaction is EIP712Base {
 contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausable{
     using Counters for Counters.Counter;
     Counters.Counter private _currentTokenID;
-    //registryAddress private userRegistryAddress;
+    WhiteLists private whiteListsAddress;
     mapping (uint256 => address) private creators;
     mapping (uint256 => uint256) private tokenSupply;
     mapping (uint256 => bool) public tokenNFT;
@@ -238,7 +238,10 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
         require(balanceOf(_msgSender(),_tokenId) > 0, "ERC1155Tradable#ownersOnly: ONLY_OWNERS_ALLOWED");
         _;
     }
-
+    modifier whiteUsersOnly(){
+        require(whiteListsAddress.getWhiteLists(_msgSender())==true,"operators in the whitelist only");
+        _;
+    }
     // modifier registeredUsers() {
     //     require(userRegistryAddress.isRegistered(_msgSender()),"only Registered users");
     //     _;
@@ -246,13 +249,13 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
     constructor(
         string memory _name,
         string memory _symbol,
-        //address _proxyRegistryAddress,
+        address _whiteListsAddress,
         string memory _uri
         ) ERC1155_added(_uri)  {
         names = _name;
         symbols = _symbol;
         _initializeEIP712(names);
-        //userRegistryAddress = registryAddress(_proxyRegistryAddress);
+        whiteListsAddress = WhiteLists(_whiteListsAddress);
     }
     function name() external view returns (string memory) {
     return names;
@@ -280,14 +283,13 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
     function _exists(uint256 _id) internal view returns (bool) {
         return creators[_id] != address(0);
     }
-    
     //발행된 현재 토큰 수량 id 별
     function totalSupply(uint256 _id) public view returns (uint256) {
         return tokenSupply[_id];
     }    
 
     // 배치 nft 발행 1st
-    function mintBatch_by_Owner_1st(address _to, uint256 n_generates,uint256 [] memory _amounts, bool [] memory _nfts, string [] memory _uris) public onlyOwner whenNotPaused{
+    function mintBatch_by_Owner_1st(address _to, uint256 n_generates,uint256 [] memory _amounts, bool [] memory _nfts, string [] memory _uris) public whiteUsersOnly whenNotPaused{
         require(_to != address(0),"To address should not be 0");
         require(n_generates==_nfts.length && n_generates==_uris.length,"the array length is not matched");
         uint256[] memory new_tokens = new uint256[](n_generates);
@@ -307,7 +309,7 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
 
     }
     // 배치 nft 발행 additional
-    function min_byAnyOneBatch_additional(address _to,uint256 [] memory _tokenIds, uint256 [] memory _amounts) public whenNotPaused onlyOwner{
+    function min_byAnyOneBatch_additional(address _to,uint256 [] memory _tokenIds, uint256 [] memory _amounts) public whenNotPaused whiteUsersOnly{
         require(_to != address(0),"To address should not be 0");
         require(_tokenIds.length==_amounts.length,"the length of array is not matched");
         for (uint256 i=0; i<_tokenIds.length;i++){
@@ -321,7 +323,7 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
         return _currentTokenID.current();        
     }
     //only token Owner
-    function burn(address _to,uint256 _tokenId,uint256 _burnAmount) public onlyOwner whenNotPaused {
+    function burn(address _to,uint256 _tokenId,uint256 _burnAmount) public whiteUsersOnly whenNotPaused {
         require(balanceOf(_to,_tokenId)>0,"To address should own the tokens");
         if (balanceOf(_to,_tokenId)<_burnAmount){
             _burnAmount=balanceOf(_to,_tokenId);
@@ -366,7 +368,7 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
     {
         return ContextMixin.msgSender();
     }
-    function pause() public onlyOwner {
+    function pause() public whiteUsersOnly {
         _pause();
     }
     /**
@@ -376,7 +378,7 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
      *
      * - The contract must be paused.
      */
-    function unpause() public onlyOwner{
+    function unpause() public whiteUsersOnly{
         _unpause();
     }
     //오너가 강제로 트렌스퍼 가능
@@ -385,7 +387,7 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
         address from,
         address to,
         uint256 id,
-        uint256 amount) public onlyOwner {
+        uint256 amount) public whiteUsersOnly {
             safeTransferByOwner(from,to,id,amount,"");
             if (to==address(0)){
                 tokenSupply[id]-=amount;
