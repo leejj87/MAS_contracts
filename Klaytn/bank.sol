@@ -1,5 +1,6 @@
 pragma solidity ^0.5.0;
 import "./factory.sol";
+import "./whiteLists.sol";
 contract ReentrancyGuard {
     bool private _notEntered;
     constructor () internal {
@@ -36,6 +37,7 @@ contract bank is Ownable,ReentrancyGuard,Pausable{
     using Counters for Counters.Counter;
     Counters.Counter private _accountIDX;
     MAS private nftAddress;
+    WhiteLists private whiteListsAddress;
     uint256 serviceFeePrice;
     address _owner;
     address _salesAddress;
@@ -50,12 +52,17 @@ contract bank is Ownable,ReentrancyGuard,Pausable{
         bool _reported;
     }
     mapping (uint256 => accountDetail) account;
-    constructor(address _nftAddress) public {
+    constructor(address _nftAddress,address _whiteLIstsAddress) public {
         nftAddress = MAS(_nftAddress);
         _owner=msg.sender;
         serviceFeePrice=0;
+        whiteListsAddress = WhiteLists(_whiteLIstsAddress);
     }
-    function setSalesContract(address salesContract) public onlyOwner{
+    modifier whiteUsersOnly(){
+        require(whiteListsAddress.getWhiteLists(_msgSender())==true,"operators in the whitelist only");
+        _;
+    }
+    function setSalesContract(address salesContract) public whiteUsersOnly{
         _salesAddress = salesContract;
     }
 
@@ -101,7 +108,7 @@ contract bank is Ownable,ReentrancyGuard,Pausable{
     function getAccount_reported(uint256 _accountIdx) public onlyOwner view returns(bool){
         return account[_accountIdx]._reported;
     } 
-    function withdrawServiceFee() public nonReentrant onlyOwner whenNotPaused returns(bool) {
+    function withdrawServiceFee() public nonReentrant whiteUsersOnly whenNotPaused returns(bool) {
         address payable owner = address(uint160(_owner));
         (bool success, )=owner.call.value(serviceFeePrice)("");
         require(success, "Transfer failed.");
@@ -109,25 +116,27 @@ contract bank is Ownable,ReentrancyGuard,Pausable{
         serviceFeePrice=0;
         return true;
     }
-    function setReported(uint256 _accountIdx) public onlyOwner nonReentrant whenNotPaused {
+    function setReported(uint256 _accountIdx) public whiteUsersOnly nonReentrant whenNotPaused {
         account[_accountIdx]._reported=true;
     }
-    function setRemoveReported(uint256 _accountIdx) public onlyOwner nonReentrant whenNotPaused{
+    function setRemoveReported(uint256 _accountIdx) public whiteUsersOnly nonReentrant whenNotPaused{
         account[_accountIdx]._reported=false;
     }
-    function withdrawRefund(address _to,uint256 _price) public onlyOwner nonReentrant whenNotPaused returns(bool){
-        address payable to = address(uint160(_to));
-        (bool success, )=to.call.value(_price)("");
+    function withdrawRefund(uint256 _accountIdx) public whiteUsersOnly nonReentrant whenNotPaused returns(bool){
+        require(account[_accountIdx]._reported==true,"this transaction is not reported");
+        address buyer = account[_accountIdx]._buyer;
+        uint256 refundPrice = account[_accountIdx]._sentPrice;
+        address payable _buyer = address(uint160(buyer));
+        (bool success, )=_buyer.call.value(refundPrice)("");
         require(success, "Transfer failed.");
-        emit SendForDistribution(address(this),_to,_price,"Refund");
         return true;
         }
     
 
 
-    function withdraw(uint256 _depositId, uint256 _tokenId) public nonReentrant onlyOwner whenNotPaused returns(bool) {
+    function withdraw(uint256 _depositId, uint256 _tokenId) public nonReentrant whiteUsersOnly whenNotPaused returns(bool) {
         require(account[_depositId]._distributed==false && account[_depositId]._reported==false,"the deposit already either distributed or reported");
-        require(account[_depositId]._tokenId==_tokenId,"toekn Id and bankAccount is not matched");
+        require(account[_depositId]._tokenId==_tokenId,"token Id and bankAccount are not matched");
         uint256 _soldPriced = account[_depositId]._sentPrice;
         uint256 serviceFee=(_soldPriced.mul(1)).div(20);
         serviceFeePrice=serviceFeePrice.add(serviceFee);
@@ -152,6 +161,18 @@ contract bank is Ownable,ReentrancyGuard,Pausable{
         account[_depositId]._distributed=true;
         return true;
     }
-
+    function pause() public whiteUsersOnly {
+        pause();
+    }
+    /**
+     * @dev Returns to normal state.
+     *
+     * Requirements:
+     *
+     * - The contract must be paused.
+     */
+    function unpause() public whiteUsersOnly{
+        unpause();
+    }
 
 }
