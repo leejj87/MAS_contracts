@@ -138,6 +138,18 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
     receive() external payable {
         emit Received(msg.sender, msg.value);
     }
-
+    function pause() public whiteUsersOnly {
+        _pause();
+    }
+    /**
+     * @dev Returns to normal state.
+     *
+     * Requirements:
+     *
+     * - The contract must be paused.
+     */
+    function unpause() public whiteUsersOnly{
+        _unpause();
+    }
 
 }
