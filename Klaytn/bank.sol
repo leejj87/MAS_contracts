@@ -59,7 +59,7 @@ contract bank is Ownable,ReentrancyGuard,Pausable{
         whiteListsAddress = WhiteLists(_whiteLIstsAddress);
     }
     modifier whiteUsersOnly(){
-        require(whiteListsAddress.getWhiteLists(_msgSender())==true,"operators in the whitelist only");
+        require(whiteListsAddress.getWhiteLists(2,_msgSender())==true,"operators in the whitelist only");
         _;
     }
     function setSalesContract(address salesContract) public whiteUsersOnly{
