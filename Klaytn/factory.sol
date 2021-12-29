@@ -1355,7 +1355,7 @@ contract MAS is
     event logRoyaty(uint256 indexed _tokenId, 
                     uint16 indexed Royalty_rate);
     modifier whiteUsersOnly(){
-        require(whiteListsAddress.getWhiteLists(_msgSender())==true,"operators in the whitelist only");
+        require(whiteListsAddress.getWhiteLists(0,_msgSender())==true,"operators in the whitelist only");
         _;
     }
     constructor(string memory name, string memory symbol,address _whiteListsAddress)
