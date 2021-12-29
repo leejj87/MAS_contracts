@@ -240,16 +240,19 @@ contract Pausable is PauserRole {
 }
 contract WhiteLists is Ownable, Pausable {
 
-    mapping(address=>bool) white_lists;
+    mapping(uint256=>mapping(address=>bool)) white_lists;
     constructor() public {
-        setWhiteLists(msg.sender,true);
+        setWhiteLists(0,msg.sender,true);
+        setWhiteLists(1,msg.sender,true);
+        setWhiteLists(2,msg.sender,true);
+        setWhiteLists(3,msg.sender,true);
     }
-    function setWhiteLists(address _address, bool _allow) public onlyOwner {
-        white_lists[_address]=_allow;
+    function setWhiteLists(uint256 _type,address _address, bool _allow) public onlyOwner {
+        white_lists[_type][_address]=_allow;
     }
 
-    function getWhiteLists(address _address) public view returns(bool){
-        return white_lists[_address];
+    function getWhiteLists(uint256 _type,address _address) public view returns(bool){
+        return white_lists[_type][_address];
     }
     function pause() public onlyOwner {
         pause();
