@@ -36,7 +36,7 @@ contract NFTSales is Ownable, Pausable, ReentrancyGuard {
     //mapping(uint256 => transactionStructure) public transactionMapping;
     //transactionStructure [] public transactionArray;
     modifier whiteUsersOnly(){
-        require(whiteListsAddress.getWhiteLists(_msgSender())==true,"operators in the whitelist only");
+        require(whiteListsAddress.getWhiteLists(3,_msgSender())==true,"operators in the whitelist only");
         _;
     }
     constructor(address _nftAddress,
