@@ -5,18 +5,19 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 
 
 contract WhiteLists is Ownable, Pausable {
-
-    mapping(address=>bool) white_lists;
+    //0:minting, 1:royalty 2:bank 3:purchase
+    mapping(uint256=>mapping((address=>bool))) white_lists;
     constructor(){
         setWhiteLists(msg.sender,true);
     }
-    function setWhiteLists(address _address, bool _allow) public onlyOwner {
-        white_lists[_address]=_allow;
+    function setWhiteLists(uint256 _type,address _address, bool _allow) public onlyOwner {
+        white_lists[_type][_address]=_allow;
     }
 
     function getWhiteLists(address _address) public view returns(bool){
         return white_lists[_address];
     }
+
     function pause() public onlyOwner {
         _pause();
     }
