@@ -23,7 +23,7 @@ contract MAS_Sales is Ownable,ReentrancyGuard,Pausable{
         whiteListsAddress = WhiteLists(_whiteLIstsAddress);
     }
     modifier whiteUsersOnly(){
-        require(whiteListsAddress.getWhiteLists(_msgSender())==true,"operators in the whitelist only");
+        require(whiteListsAddress.getWhiteLists(3,_msgSender())==true,"operators in the whitelist only");
         _;
     }
     function setSales(address _to,uint256 _tokenId, uint256 _price) public whiteUsersOnly whenNotPaused{
