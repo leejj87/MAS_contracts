@@ -28,7 +28,7 @@ contract Bank is Ownable,Pausable,ReentrancyGuard {
                     whiteListsAddress = WhiteLists(_whiteListsAddress);
                 }
     modifier whiteUsersOnly(){
-        require(whiteListsAddress.getWhiteLists(_msgSender())==true,"operators in the whitelist only");
+        require(whiteListsAddress.getWhiteLists(2,_msgSender())==true,"operators in the whitelist only");
         _;
     }
     struct accountDetail{
