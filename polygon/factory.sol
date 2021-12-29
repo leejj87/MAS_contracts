@@ -239,7 +239,7 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
         _;
     }
     modifier whiteUsersOnly(){
-        require(whiteListsAddress.getWhiteLists(_msgSender())==true,"operators in the whitelist only");
+        require(whiteListsAddress.getWhiteLists(0,_msgSender())==true,"operators in the whitelist only");
         _;
     }
     // modifier registeredUsers() {
