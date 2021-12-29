@@ -12,7 +12,7 @@ contract royalty is ERC2981PerTokenRoyalties{
     } 
     mapping (uint256 => Royalty_data) royaltyInfo;
     modifier whiteUsersOnly(){
-        require(whiteListsAddress.getWhiteLists(msg.sender)==true,"operators in the whitelist only");
+        require(whiteListsAddress.getWhiteLists(1,msg.sender)==true,"operators in the whitelist only");
         _;
     }
     event royalty_record(address who_triggered,uint256 tokenId,uint16 royaltySetup);
