@@ -84,28 +84,28 @@ contract bank is Ownable,ReentrancyGuard,Pausable{
     function() external payable {
         emit Received(msg.sender, msg.value);
     }
-    function getBalance() public onlyOwner view returns(uint256){
+    function getBalance() public whiteUsersOnly view returns(uint256){
         return address(this).balance;
     }
-    function getserviceFee() public onlyOwner view returns(uint256){
+    function getserviceFee() public whiteUsersOnly view returns(uint256){
         return serviceFeePrice;
     }
-    function getAccount_tokenId(uint256 _accountIdx) public onlyOwner view returns(uint256){
+    function getAccount_tokenId(uint256 _accountIdx) public whiteUsersOnly view returns(uint256){
         return account[_accountIdx]._tokenId;
     }
-    function getAccount_buyer(uint256 _accountIdx) public onlyOwner view returns(address){
+    function getAccount_buyer(uint256 _accountIdx) public whiteUsersOnly view returns(address){
         return account[_accountIdx]._buyer;
     }
-    function getAccount_seller(uint256 _accountIdx) public onlyOwner view returns(address){
+    function getAccount_seller(uint256 _accountIdx) public whiteUsersOnly view returns(address){
         return account[_accountIdx]._seller;
     }
-    function getAccount_price(uint256 _accountIdx) public onlyOwner view returns(uint256){
+    function getAccount_price(uint256 _accountIdx) public whiteUsersOnly view returns(uint256){
         return account[_accountIdx]._sentPrice;
     } 
-    function getAccount_distributed(uint256 _accountIdx) public onlyOwner view returns(bool){
+    function getAccount_distributed(uint256 _accountIdx) public whiteUsersOnly view returns(bool){
         return account[_accountIdx]._distributed;
     } 
-    function getAccount_reported(uint256 _accountIdx) public onlyOwner view returns(bool){
+    function getAccount_reported(uint256 _accountIdx) public whiteUsersOnly view returns(bool){
         return account[_accountIdx]._reported;
     } 
     function withdrawServiceFee() public nonReentrant whiteUsersOnly whenNotPaused returns(bool) {
