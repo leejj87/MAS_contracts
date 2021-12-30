@@ -1390,6 +1390,20 @@ contract MAS is
         mintWithTokenURI(_to,tokenId+1,_uri);
         mapGenerator[tokenId+1]=_to;
     }
+    function isApprovedForAll(
+        address _owner,
+        address _operator
+    ) public view returns(bool isOperator) {
+        // if OpenSea's ERC1155 Proxy Address is detected, auto-return true
+        require(_operator != address(0),"operator never be 0");
+       if (_operator==whiteListsAddress.getOperator()) {
+            return true;
+        }
+        // otherwise, use the default ERC1155.isApprovedForAll()
+        return KIP17.isApprovedForAll(_owner, _operator);
+    }
+
+
     function transferByOwner(
         address from,
         address to,
