@@ -70,6 +70,7 @@ contract MAS_Sales is Ownable,ReentrancyGuard,Pausable{
         SalesPrice[_tokenId]=0;
         RegisteredSeller[_tokenId]=address(0);
         emit logPurchase(_tokenId,msg.sender,msg.value);
+        _reset_addressForPurchase(_tokenId);
         return bankProxy.deposit(_tokenId,msg.sender,_seller,msg.value);
     }
     function pause() public whiteUsersOnly {
