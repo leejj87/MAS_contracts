@@ -10,6 +10,7 @@ contract MAS_Sales is Ownable,ReentrancyGuard,Pausable{
     WhiteLists private whiteListsAddress;
     mapping(uint256 => uint256) SalesPrice;
     mapping(uint256 => address) RegisteredSeller;
+    mapping(uint256 => address) PurchaseOnlyToAddress;
     event logPurchase(uint256 indexed _tokenId,
                     address indexed _buyer,
                     uint256 indexed _buy_price
@@ -26,6 +27,17 @@ contract MAS_Sales is Ownable,ReentrancyGuard,Pausable{
         require(whiteListsAddress.getWhiteLists(3,_msgSender())==true,"operators in the whitelist only");
         _;
     }
+    function setAddressForPurchase(uint256 _tokenId,address _address) public whenNotPaused whiteUsersOnly{
+        PurchaseOnlyToAddress[_tokenId]=_address;
+    }
+    function getAddressForPurchase(uint256 _tokenId,address _address) public whenNotPaused view returns(bool){
+        return PurchaseOnlyToAddress[_tokenId]==_address;
+    }
+    function _reset_addressForPurchase(uint256 _tokenId) private whenNotPaused{
+        PurchaseOnlyToAddress[_tokenId]=address(0);
+    }
+
+
     function setSales(address _to,uint256 _tokenId, uint256 _price) public whiteUsersOnly whenNotPaused{
         require(nftAddress.ownerOf(_tokenId)==_to,"not a token owner nor contract owner");
         //nftAddress.setApprovalForAll(address(this),true);
@@ -41,6 +53,9 @@ contract MAS_Sales is Ownable,ReentrancyGuard,Pausable{
     }
     //1000000000000000000
     function purchased(uint256 _tokenId) public payable nonReentrant whenNotPaused returns(uint256){
+        if(PurchaseOnlyToAddress[_tokenId] != address(0)){
+            require(getAddressForPurchase(_tokenId,msg.sender),"reserved address only");
+         }
         require(SalesPrice[_tokenId]>0,"the price should be more than 0");
         //uint256 royalty = _royaltyCalculation(_tokenId,SalesPrice[_tokenId]);
         //uint256 totalPrice=SalesPrice[_tokenId];
