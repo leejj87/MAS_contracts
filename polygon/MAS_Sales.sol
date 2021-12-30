@@ -33,6 +33,7 @@ contract NFTSales is Ownable, Pausable, ReentrancyGuard {
     }
     //address public this_address  = address(this);
     mapping(uint256 => mapping(address => priceMapping)) public tokenPrice;
+    mapping(uint256 => address) PurchaseOnlyToAddress;
     //mapping(uint256 => transactionStructure) public transactionMapping;
     //transactionStructure [] public transactionArray;
     modifier whiteUsersOnly(){
@@ -54,6 +55,17 @@ contract NFTSales is Ownable, Pausable, ReentrancyGuard {
     event subAmountBatch(address _seller,uint256 [] _tokenIds,uint256 [] _subAmount);
     event setPricelog(address _seller, uint256 _tokenId, uint256 _amount, uint256 _price);
     event setRemovePriceLog(address _seller,uint256 [] _tokenIds);
+    
+    function setAddressForPurchase(uint256 _tokenId,address _address) public whenNotPaused whiteUsersOnly{
+        PurchaseOnlyToAddress[_tokenId]=_address;
+    }
+    function getAddressForPurchase(uint256 _tokenId,address _address) public whenNotPaused view returns(bool){
+        return PurchaseOnlyToAddress[_tokenId]==_address;
+    }
+    function _reset_addressForPurchase(uint256 _tokenId) private whenNotPaused{
+        PurchaseOnlyToAddress[_tokenId]=address(0);
+    }
+    
     //price is price per token
     //판매가격은 wei 로 설정한다.
     function setSales(address _seller, uint256 _tokenId, uint256 _price, uint256 _amount) public whenNotPaused whiteUsersOnly{
@@ -99,6 +111,9 @@ contract NFTSales is Ownable, Pausable, ReentrancyGuard {
     }
     //가격은 wei로 설정한다.
     function purchased(uint256 _tokenId, address _sellerAddress, uint256 _amount) public payable whenNotPaused nonReentrant returns(uint256){
+         if(PurchaseOnlyToAddress[_tokenId] != address(0)){
+            require(getAddressForPurchase(_tokenId,msg.sender),"reserved address only");
+         }
          uint256 price = tokenPrice[_tokenId][_sellerAddress].price*_amount;
          require(tokenPrice[_tokenId][_sellerAddress].price >0,"the sales item is not on sales or all sold out");
          require(tokenPrice[_tokenId][_sellerAddress].amount >= _amount,"the sales item(s) with the seller address is/are not enough to sell");
@@ -109,6 +124,7 @@ contract NFTSales is Ownable, Pausable, ReentrancyGuard {
          nftAddress.safeTransferFrom(_sellerAddress, msg.sender, _tokenId, _amount,""); //전송
          tokenPrice[_tokenId][_sellerAddress].amount-=_amount; // 판매후 가격및 수량 조정.
          emit transactionlog(msg.sender,_sellerAddress,_tokenId,_amount,price,msg.value);
+         _reset_addressForPurchase(_tokenId);
          return bankAddress.deposit(_tokenId,msg.sender,_sellerAddress,msg.value);
     }
     //only Contract Owner
