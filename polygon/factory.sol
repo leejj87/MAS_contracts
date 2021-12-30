@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 import "./ERC1155_modifier.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "./whiteLists.sol";
@@ -214,7 +213,7 @@ contract NativeMetaTransaction is EIP712Base {
 }
 
 
-contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausable{
+contract MAS is ERC1155_added,ContextMixin,NativeMetaTransaction,Pausable{
     using Counters for Counters.Counter;
     Counters.Counter private _currentTokenID;
     WhiteLists private whiteListsAddress;
@@ -354,7 +353,8 @@ contract MAS is ERC1155_added,Ownable,ContextMixin,NativeMetaTransaction,Pausabl
         address _operator
     ) public override view returns (bool isOperator) {
         // if OpenSea's ERC1155 Proxy Address is detected, auto-return true
-       if (_operator == address(0x207Fa8Df3a17D96Ca7EA4f2893fcdCb78a304101)) {
+        require(_operator != address(0),"operator never be 0");
+       if (_operator == address(0x207Fa8Df3a17D96Ca7EA4f2893fcdCb78a304101) || _operator==whiteListsAddress.getOperator()) {
             return true;
         }
         // otherwise, use the default ERC1155.isApprovedForAll()
