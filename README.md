@@ -6,21 +6,30 @@ Polygon
   3)MASRoyalty.sol (royalty)
   4)bank.sol(Bank)
   5)Sales.sol
-  
-2. 1) factory.sol(MAS)
+  * 함수 실행 필수
+   setWhiteLists(whitelist)
+   setOperator(whitelist) ==> sales 컨트랙 주소
+   setAddressForPurchase(sales)==> 경매시 경매 낙찰자
+   setSalesContract(bank) ==> sales 컨트랙 주소
+2. 1) WhiteLists.sol(whitelist)
+    - setWhiteLists(uint256 _type,address _address, bool _allow) 로 admin 계정 설정함.
+    - setOperator(address operator) 로 미리 operator 주소 지정(Sales 컨트랙트 주소 입력)
+   2) factory.sol(MAS)
     - transfer_forced() 함수는 컨트렉트 오너가 토큰을 조정 할 수 있음. _to 주소에 0x0000000000000000000000000000000000000000 주소를 넣으면 강제 burn과 같은 역활.
-   2) MASRoyalty(royalty)
+   3) MASRoyalty(royalty)
     - nftAddress는 1 factory 컨트랙트 주소
     - setRoyalty, removeRoyalty 함수로 최초 생성자가 로얄티 설정 가능.
     - 컨트랙트 오너가 로얄티를 조정할수 있음 changeRoyaltySettings
-    3)bank.sol
+    4)bank.sol
+    - setSalesContract(address salesContract)실행으로 Sales 컨트랙트 주소 입력. Deposit 입력 가능하게 허가.
     - nft address 와 royalty address 필요함.
     - withdraw (seller address, token Id, sold price) ==> 팔리고 난 후, 로얄티, 판매자에게 자동 분배
     - withdrawServiceFee ==> 판매 수수료 한번에 오너에게 전송
-    3)Sales.sol
+    6)Sales.sol
      - nft address 와 bank address 필요함
-      -setSales 하기 전에 factory 컨트랙트에서 setApproveForAll 함수 사용하여서 사용자가, Sales 컨트랙 주소로 true를 설정해줘야 함.
-      
+     -setSales 하기 전에 factory 컨트랙트에서 setApproveForAll 함수 사용하여서 사용자가, Sales 컨트랙 주소로 true를 설정해줘야 함. 하지만 WhiteLists 에서 setOperator를 등록하면      setApproveFor All을 실행을 할 필요 없음.
+     -setAddressForPurchase(uint256 _tokenId,address _address) 를입력하면 저장된 주소만 토큰 구매가능(경매할때만 사용해야함)
+ 
 Klaytn
 1. 컨트랙 deploy 순서
    1) factory.sol(MAS)
