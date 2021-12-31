@@ -286,37 +286,29 @@ contract MAS is ERC1155_added,ContextMixin,NativeMetaTransaction,Pausable{
     function totalSupply(uint256 _id) public view returns (uint256) {
         return tokenSupply[_id];
     }    
-
     // 배치 nft 발행 1st
-    function mintBatch_by_Owner_1st(address _to, uint256 n_generates,uint256 [] memory _amounts, bool [] memory _nfts, string [] memory _uris) public whiteUsersOnly whenNotPaused{
+    function mintByOwner(address _to, uint256 _amounts, bool _nft, string memory _uri) public whiteUsersOnly whenNotPaused{
         require(_to != address(0),"To address should not be 0");
-        require(n_generates==_nfts.length && n_generates==_uris.length,"the array length is not matched");
-        uint256[] memory new_tokens = new uint256[](n_generates);
-        for (uint256 i=0; i<n_generates;i++){
-            _currentTokenID.increment();
-            uint256 _tokenId = _currentTokenID.current();
-            new_tokens[i]=_tokenId;
-            if(_nfts[i]==true){
-                require(_amounts[i]==1,"NFT token should set the amount as 1");
+        _currentTokenID.increment();
+        uint256 _tokenId = _currentTokenID.current();
+        if(_nft==true){
+                require(_amounts==1,"NFT token should set the amount as 1");
             }
-            tokenNFT[_tokenId]=_nfts[i];
-            seturi(_tokenId,_uris[i]);
-            creators[_tokenId]=_to;
-            tokenSupply[_tokenId]+=_amounts[i];
-        }
-        _mintBatch(_to,new_tokens,_amounts,"");//배치 민트
-
+        tokenNFT[_tokenId]=_nft;
+        seturi(_tokenId,_uri);
+        creators[_tokenId]=_to;
+        tokenSupply[_tokenId]+=_amounts;
+        _mint(_to,_tokenId,_amounts,"");
     }
+
+    
     // 배치 nft 발행 additional
-    function min_byAnyOneBatch_additional(address _to,uint256 [] memory _tokenIds, uint256 [] memory _amounts) public whenNotPaused whiteUsersOnly{
+    function min_additional(address _to,uint256 _tokenId, uint256 _amounts) public whenNotPaused whiteUsersOnly{
         require(_to != address(0),"To address should not be 0");
-        require(_tokenIds.length==_amounts.length,"the length of array is not matched");
-        for (uint256 i=0; i<_tokenIds.length;i++){
-            require(creators[_tokenIds[i]]==_to,"Only token Owners generate additional Token");
-            require(tokenNFT[_tokenIds[i]]==false,"NFT Unable to generate additional Token");
-            tokenSupply[_tokenIds[i]]+=_amounts[i];
-        }
-        _mintBatch(_to,_tokenIds,_amounts,"");
+        require(creators[_tokenId]==_to,"Only token Owners generate additional Token");
+        require(tokenNFT[_tokenId]==false,"NFT Unable to generate additional Token");
+        tokenSupply[_tokenId]+=_amounts;
+        _mint(_to,_tokenId,_amounts,"");
     }
      function getCurrentToken() public view returns(uint256){
         return _currentTokenID.current();        
